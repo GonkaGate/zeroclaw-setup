@@ -1,5 +1,6 @@
 import type {
   ConfigMutationPreflight,
+  GonkaGateLiveCatalogSummary,
   InstallBlockedResult,
   InstallFailedResult,
   InstallPath,
@@ -23,11 +24,18 @@ import {
 import { getProviderEnvOverrides } from "./environment-overrides.js";
 import { runFirstRunInstall } from "./first-run-install.js";
 import { getShippedFirstRunProof } from "./first-run-proof.js";
+import {
+  fetchCuratedGonkaGateModelCatalog,
+  type CuratedGonkaGateModelCatalog,
+  type GonkaGateModelsError,
+  requireModelInGonkaGateCatalog,
+} from "./gonkagate-models.js";
 import { MANAGED_CONFIG_FIELDS } from "./managed-contract.js";
 import { runExistingConfigMutation } from "./native-write.js";
 import {
   canPromptInteractively,
   looksLikeGonkaGateApiKey,
+  promptForInstallApiKey,
   promptForInstallModel,
 } from "./prompts.js";
 import { inspectRuntimeQuiesce } from "./runtime-quiesce.js";
@@ -67,11 +75,13 @@ function createInstallContextResultBase(
   context: InstallContext,
   path: InstallPath,
   selectedModel?: CuratedModel,
+  liveCatalog?: GonkaGateLiveCatalogSummary,
 ) {
   return {
     commandProbe: context.commandProbe,
     configInspection: context.configInspection,
     firstRunProof: context.firstRunProof,
+    liveCatalog,
     managedFields: MANAGED_CONFIG_FIELDS,
     overrides: context.overrides,
     path,
@@ -86,9 +96,15 @@ function createBlockedResult(
   reason: string,
   selectedModel?: CuratedModel,
   remediation?: string,
+  liveCatalog?: GonkaGateLiveCatalogSummary,
 ): InstallBlockedResult {
   return {
-    ...createInstallContextResultBase(context, path, selectedModel),
+    ...createInstallContextResultBase(
+      context,
+      path,
+      selectedModel,
+      liveCatalog,
+    ),
     reason,
     remediation,
     status: "blocked",
@@ -101,9 +117,15 @@ function createScaffoldResult(
   reason: string,
   selectedModel?: CuratedModel,
   remediation?: string,
+  liveCatalog?: GonkaGateLiveCatalogSummary,
 ): InstallScaffoldResult {
   return {
-    ...createInstallContextResultBase(context, path, selectedModel),
+    ...createInstallContextResultBase(
+      context,
+      path,
+      selectedModel,
+      liveCatalog,
+    ),
     reason,
     remediation,
     status: "scaffold",
@@ -116,9 +138,15 @@ function createFailedResult(
   reason: string,
   writeResult: NativeWriteFailure,
   selectedModel: CuratedModel,
+  liveCatalog: GonkaGateLiveCatalogSummary,
 ): InstallFailedResult {
   return {
-    ...createInstallContextResultBase(context, path, selectedModel),
+    ...createInstallContextResultBase(
+      context,
+      path,
+      selectedModel,
+      liveCatalog,
+    ),
     reason,
     remediation: writeResult.remediation,
     status: "failed",
@@ -131,9 +159,15 @@ function createSuccessResult(
   path: Exclude<InstallPath, "none">,
   selectedModel: CuratedModel,
   writeResult: NativeWriteSuccess,
+  liveCatalog: GonkaGateLiveCatalogSummary,
 ): InstallSuccessResult {
   return {
-    ...createInstallContextResultBase(context, path, selectedModel),
+    ...createInstallContextResultBase(
+      context,
+      path,
+      selectedModel,
+      liveCatalog,
+    ),
     configInspection: writeResult.confirmedInspection,
     path,
     selectedModel,
@@ -182,9 +216,12 @@ async function loadInstallContext(
 async function resolveSelectedModel(
   context: InstallContext,
   options: InstallOptions,
+  catalog: CuratedGonkaGateModelCatalog,
 ): Promise<CuratedModel> {
   if (options.model !== undefined) {
-    return resolveModelByKey(options.model);
+    const selectedModel = resolveModelByKey(options.model);
+    requireModelInGonkaGateCatalog(selectedModel, catalog);
+    return selectedModel;
   }
 
   if (
@@ -196,13 +233,21 @@ async function resolveSelectedModel(
     );
   }
 
-  return await promptForInstallModel(context.installDependencies);
+  const selectedModel = await promptForInstallModel(
+    context.installDependencies,
+  );
+  requireModelInGonkaGateCatalog(selectedModel, catalog);
+  return selectedModel;
 }
 
-function resolveSecretTransport(
+async function resolveCatalogCredentialAndSecretTransport(
   context: InstallContext,
   options: InstallOptions,
-): { readonly mode: SecretTransportMode; readonly secret?: string } {
+): Promise<{
+  readonly apiKey: string;
+  readonly mode: SecretTransportMode;
+  readonly secret?: string;
+}> {
   if (typeof options.apiKey === "string") {
     const apiKey = options.apiKey.trim();
 
@@ -211,6 +256,7 @@ function resolveSecretTransport(
     }
 
     return {
+      apiKey,
       mode: "stdin",
       secret: apiKey,
     };
@@ -225,8 +271,30 @@ function resolveSecretTransport(
     );
   }
 
+  const apiKey = await promptForInstallApiKey(context.installDependencies);
+
   return {
+    apiKey,
     mode: "native_prompt",
+  };
+}
+
+async function loadLiveCatalog(
+  context: InstallContext,
+  apiKey: string,
+): Promise<CuratedGonkaGateModelCatalog> {
+  return await fetchCuratedGonkaGateModelCatalog(apiKey, {
+    fetchImpl: context.installDependencies.http.fetch,
+  });
+}
+
+function summarizeLiveCatalog(
+  catalog: CuratedGonkaGateModelCatalog,
+): GonkaGateLiveCatalogSummary {
+  return {
+    curatedModelIds: catalog.curatedModels.map((model) => model.modelId),
+    endpoint: catalog.endpoint,
+    liveModelCount: catalog.liveModelCount,
   };
 }
 
@@ -305,10 +373,17 @@ async function runMutatingInstallPath(
     );
   }
 
-  let selectedModel: CuratedModel;
+  let secretTransport: {
+    readonly apiKey: string;
+    readonly mode: SecretTransportMode;
+    readonly secret?: string;
+  };
 
   try {
-    selectedModel = await resolveSelectedModel(context, options);
+    secretTransport = await resolveCatalogCredentialAndSecretTransport(
+      context,
+      options,
+    );
   } catch (cause) {
     return createBlockedResult(
       context,
@@ -317,19 +392,48 @@ async function runMutatingInstallPath(
     );
   }
 
-  let secretTransport: {
-    readonly mode: SecretTransportMode;
-    readonly secret?: string;
-  };
+  if (path === "first_run") {
+    const unsupportedTransportResult = getUnsupportedFirstRunTransportResult(
+      context,
+      path,
+      resolveModelByKey(options.model),
+      secretTransport.mode,
+    );
+
+    if (unsupportedTransportResult !== undefined) {
+      return unsupportedTransportResult;
+    }
+  }
+
+  let liveCatalog: CuratedGonkaGateModelCatalog;
 
   try {
-    secretTransport = resolveSecretTransport(context, options);
+    liveCatalog = await loadLiveCatalog(context, secretTransport.apiKey);
   } catch (cause) {
     return createBlockedResult(
       context,
       path,
       cause instanceof Error ? cause.message : String(cause),
-      selectedModel,
+      undefined,
+      cause instanceof Error && "kind" in cause
+        ? `Resolve the GonkaGate ${(cause as GonkaGateModelsError).kind} issue and rerun the installer before any ZeroClaw config is mutated.`
+        : undefined,
+    );
+  }
+
+  const liveCatalogSummary = summarizeLiveCatalog(liveCatalog);
+  let selectedModel: CuratedModel;
+
+  try {
+    selectedModel = await resolveSelectedModel(context, options, liveCatalog);
+  } catch (cause) {
+    return createBlockedResult(
+      context,
+      path,
+      cause instanceof Error ? cause.message : String(cause),
+      undefined,
+      undefined,
+      liveCatalogSummary,
     );
   }
 
@@ -361,7 +465,13 @@ async function runMutatingInstallPath(
         });
 
   if (writeResult.status === "success") {
-    return createSuccessResult(context, path, selectedModel, writeResult);
+    return createSuccessResult(
+      context,
+      path,
+      selectedModel,
+      writeResult,
+      liveCatalogSummary,
+    );
   }
 
   return createFailedResult(
@@ -370,6 +480,7 @@ async function runMutatingInstallPath(
     writeResult.reason,
     writeResult,
     selectedModel,
+    liveCatalogSummary,
   );
 }
 

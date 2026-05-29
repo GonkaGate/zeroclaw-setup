@@ -9,10 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MODEL_CATALOG } from "../../src/constants/models.js";
 import {
   createNodeInstallDependencies,
   type CreateNodeInstallDependenciesOverrides,
   type InstallDependencies,
+  type InstallSelectOptions,
 } from "../../src/install/deps.js";
 
 export interface FakeZeroClawCommandFailure {
@@ -92,6 +94,18 @@ function toBehavior(options: FakeZeroClawOptions): FakeZeroClawBehavior {
   };
 }
 
+async function fetchSuccessfulModelCatalog() {
+  return {
+    status: 200,
+    async json() {
+      return {
+        data: MODEL_CATALOG.map((model) => ({ id: model.modelId })),
+        object: "list",
+      };
+    },
+  };
+}
+
 export async function createInstallHarness(): Promise<InstallHarness> {
   const rootDir = await mkdtemp(join(tmpdir(), "zeroclaw-setup-"));
   const homeDir = join(rootDir, "home");
@@ -143,13 +157,32 @@ export async function createInstallHarness(): Promise<InstallHarness> {
         clock: overrides.clock,
         commands: overrides.commands,
         fs: overrides.fs,
+        http: overrides.http ?? {
+          fetch: fetchSuccessfulModelCatalog,
+        },
         input: overrides.input,
         processes: overrides.processes ?? {
           async listCurrentUserProcesses() {
             return [];
           },
         },
-        prompts: overrides.prompts,
+        prompts: {
+          async readSecret() {
+            return "gp-live-catalog-secret";
+          },
+          async selectOption<TValue extends string>(
+            options: InstallSelectOptions<TValue>,
+          ) {
+            const firstChoice = options.choices[0];
+
+            if (firstChoice === undefined) {
+              throw new Error("Expected at least one select option.");
+            }
+
+            return options.defaultValue ?? firstChoice.value;
+          },
+          ...overrides.prompts,
+        },
         runtime: {
           cwd: overrides.runtime?.cwd ?? workspaceDir,
           env: {

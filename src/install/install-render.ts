@@ -114,6 +114,16 @@ export function renderInstallResult(result: InstallResult): string {
     );
   }
 
+  if (result.liveCatalog !== undefined) {
+    lines.push(
+      "GonkaGate live model catalog:",
+      `- Endpoint: ${result.liveCatalog.endpoint}`,
+      `- Live model entries returned: ${result.liveCatalog.liveModelCount}`,
+      `- Curated models confirmed: ${result.liveCatalog.curatedModelIds.join(", ")}`,
+      "",
+    );
+  }
+
   if (result.configInspection !== undefined) {
     lines.push(
       "Resolved ZeroClaw config:",

@@ -48,6 +48,12 @@ Current status:
   `default-provider` and `default-model` go through
   `zeroclaw props set --no-interactive`, while `api-key` stays on the hidden
   native `zeroclaw props set api-key` path
+- after hidden GonkaGate key entry, install calls
+  `GET https://api.gonkagate.com/v1/models`, validates the response shape, and
+  requires every in-repo curated model to be present before any model prompt or
+  ZeroClaw config mutation
+- live catalog entries outside the curated registry are never exposed as
+  selectable models
 - install refuses mutation when the runtime is active or ambiguous, when the
   config contains unknown top-level keys, or when the installed ZeroClaw
   runtime is outside audited `v0.6.9`
@@ -136,6 +142,15 @@ The code hard-codes the GonkaGate contract from the PRD:
 - curated model catalog:
   - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
   - `kimi-k2.6` -> `moonshotai/Kimi-K2.6` (recommended default)
+- live model catalog gate:
+  - endpoint: `GET https://api.gonkagate.com/v1/models`
+  - auth: `Authorization: Bearer <gp-...>`
+  - response trust boundary: root object with a `data` array of objects whose
+    `id` fields are non-empty strings
+  - install requires all curated model IDs to be present before model
+    selection or native writes
+  - arbitrary live entries are ignored unless they are also in the curated
+    registry
 - public install flag surface:
   - optional `--model <curated-key>`
 - env override checks:
@@ -165,9 +180,14 @@ Current shipped behavior:
 
 - `npx zeroclaw-setup` performs real Phase 2 install mutation on exact
   audited `v0.6.9` when read-only gating passes
-- install prompts for a curated model when `--model` is omitted, then defers
-  hidden API-key entry until the chosen mutation path is known and the runtime
-  quiesce gate has passed
+- install asks for a hidden GonkaGate API key after the chosen mutation path is
+  known and the runtime quiesce gate has passed, checks the live
+  `GET /v1/models` catalog, then prompts for a curated model when `--model` is
+  omitted
+- the wrapper-collected key is used for the live catalog check; public native
+  storage paths still let ZeroClaw collect the persisted `api-key` through
+  `zeroclaw props set api-key`, so first-run stdin secret persistence remains
+  blocked
 - first-run install is shipped only when ZeroClaw can collect the secret
   through its hidden native `zeroclaw props set api-key` prompt
 - install does not place the GonkaGate API key on argv in the shipped happy

@@ -111,6 +111,11 @@ Happy-path prompts in v1:
 - hidden prompt for a GonkaGate API key
 - curated model picker
 
+After the hidden key prompt, install should call
+`GET https://api.gonkagate.com/v1/models` with Bearer auth, validate the
+response shape before trusting it, and continue to model selection only when
+every curated in-repo model is present in the live catalog.
+
 Things the user should not be asked:
 
 - custom provider type
@@ -147,6 +152,9 @@ It is "the easiest GonkaGate setup path for ZeroClaw users, built on top of Zero
 - GonkaGate base URL is fixed to `https://api.gonkagate.com/v1`
 - provider choice is fixed by product design
 - model choice comes only from a code-owned curated registry
+- live GonkaGate catalog validation uses only
+  `GET https://api.gonkagate.com/v1/models`; arbitrary live entries are not
+  selectable unless they are also in the code-owned curated registry
 - API key entry remains interactive and hidden
 - the wrapper writes ZeroClaw config, not shell env and not shell rc files
 
@@ -247,6 +255,12 @@ Rules:
 - optional `--model <curated-key>` should be part of v1, but only for curated
   keys
 - when `--model` is omitted, install should keep the interactive curated picker
+- before model selection or config mutation, install should use the entered
+  `gp-...` key to fetch `GET /v1/models`, validate an object response with a
+  `data` array of model objects containing non-empty string `id` fields, and
+  require all curated model IDs to be present
+- live catalog entries outside the curated registry should be ignored, not
+  surfaced as ad hoc selectable models
 - adding more curated entries later requires explicit docs, test, and
   release-note updates
 - arbitrary model IDs should not be part of the public happy path
@@ -267,6 +281,7 @@ Recommended strategy: hybrid
 ### What The Wrapper Should Own
 
 - GonkaGate-specific prompts
+- the GonkaGate `/v1/models` live catalog trust boundary
 - curated model registry
 - the GonkaGate managed config contract
 - environment-override checks relevant to GonkaGate correctness
@@ -293,6 +308,10 @@ For first-run setup:
 - if no stable first-run path can satisfy both hidden secret entry and the
   narrow GonkaGate UX, v1 should remain scaffolded for first-run mutation
   rather than silently relaxing the secrecy guarantee
+- the wrapper may use the hidden entered key for the pre-write live catalog
+  check, but first-run secret persistence must remain on the proven native
+  `zeroclaw props set api-key` prompt path until stdin persistence is
+  explicitly re-proven
 
 For existing-config updates:
 
@@ -582,6 +601,10 @@ A v1 launch is successful when:
    `moonshotai/Kimi-K2.6`, with `kimi-k2.6` kept as the recommended
    default.
 5. v1 should support optional `--model <curated-key>` while keeping the default install UX interactive when the flag is omitted.
+6. v1 install should validate GonkaGate `GET /v1/models` before model
+   selection and before any ZeroClaw config mutation. The check proves auth and
+   live curated model visibility only; it does not broaden model selection or
+   prove later billable-request readiness.
 
 ## Bounded Implementation Proof
 
@@ -595,6 +618,9 @@ all of the following in disposable ZeroClaw workspaces:
 5. the mutating path detects unknown top-level config keys and refuses mutation rather than assuming stable `v0.6.9` saves will preserve them
 6. first-run setup uses a stable native seam that preserves the GonkaGate one-command UX without forcing the full interactive `zeroclaw onboard` wizard and without passing the secret on argv
 7. verify can resolve the active config path using stable source-level precedence and `ZEROCLAW_WORKSPACE` layout branching, classify env-shadowed runtime state without mutating anything, and keep `zeroclaw doctor` output advisory rather than verdict-defining
+8. the live catalog boundary calls the canonical `/v1/models` endpoint with
+   Bearer auth, rejects malformed responses, rejects catalogs missing curated
+   models, and blocks before native writes when the check fails
 
 ## Compatibility Gate
 

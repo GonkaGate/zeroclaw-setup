@@ -1,0 +1,4 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "gonkagate/qwen3-235b-a22b-instruct-2507-fp8"
+}

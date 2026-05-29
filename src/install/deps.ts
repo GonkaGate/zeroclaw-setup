@@ -39,6 +39,21 @@ export interface InstallInput {
   readStdin(): Promise<string>;
 }
 
+export interface InstallHttpResponse {
+  json(): Promise<unknown>;
+  readonly status: number;
+}
+
+export interface InstallHttpClient {
+  fetch(
+    url: string,
+    init: {
+      readonly headers: Record<string, string>;
+      readonly signal?: AbortSignal;
+    },
+  ): Promise<InstallHttpResponse>;
+}
+
 export interface InstallSelectChoice<TValue extends string = string> {
   readonly description?: string;
   readonly label: string;
@@ -85,6 +100,7 @@ export interface InstallDependencies {
   readonly clock: InstallClock;
   readonly commands: InstallCommandRunner;
   readonly fs: InstallFs;
+  readonly http: InstallHttpClient;
   readonly input: InstallInput;
   readonly processes: InstallProcessInspector;
   readonly prompts: InstallPrompts;
@@ -95,6 +111,7 @@ export interface CreateNodeInstallDependenciesOverrides {
   readonly clock?: Partial<InstallClock>;
   readonly commands?: Partial<InstallCommandRunner>;
   readonly fs?: Partial<InstallFs>;
+  readonly http?: Partial<InstallHttpClient>;
   readonly input?: Partial<InstallInput>;
   readonly processes?: Partial<InstallProcessInspector>;
   readonly prompts?: Partial<InstallPrompts>;
@@ -441,6 +458,16 @@ async function readStdin(): Promise<string> {
   return contents;
 }
 
+async function fetchHttp(
+  url: string,
+  init: {
+    readonly headers: Record<string, string>;
+    readonly signal?: AbortSignal;
+  },
+): Promise<InstallHttpResponse> {
+  return await fetch(url, init);
+}
+
 async function readSecret(message: string): Promise<string> {
   return await password({
     mask: "*",
@@ -563,6 +590,9 @@ export function createNodeInstallDependencies(
   const defaultInput: InstallInput = {
     readStdin,
   };
+  const defaultHttp: InstallHttpClient = {
+    fetch: fetchHttp,
+  };
   const defaultPrompts: InstallPrompts = {
     readSecret,
     selectOption,
@@ -597,6 +627,10 @@ export function createNodeInstallDependencies(
       pathExists: overrides.fs?.pathExists ?? pathExists,
       readFile: overrides.fs?.readFile ?? readFile,
       writeFile: overrides.fs?.writeFile ?? writeFile,
+    },
+    http: {
+      ...defaultHttp,
+      ...overrides.http,
     },
     input: {
       ...defaultInput,

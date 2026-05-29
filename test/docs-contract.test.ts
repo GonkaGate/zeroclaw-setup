@@ -35,6 +35,7 @@ test("README advertises the package and current install/verify status", () => {
   assert.match(readme, /Phase 3 read-only verdict flow/i);
   assert.match(readme, /runtime-quiesced/i);
   assert.match(readme, /onboard --quick/i);
+  assert.match(readme, /GET https:\/\/api\.gonkagate\.com\/v1\/models/);
   assert.match(readme, /zeroclaw status/i);
   assert.match(readme, /zeroclaw doctor/i);
 });
@@ -108,6 +109,8 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   assert.match(readme, /advisory/i);
   assert.match(readme, /`--model <curated-key>`/);
   assert.match(readme, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
+  assert.match(readme, /`GET https:\/\/api\.gonkagate\.com\/v1\/models`/);
+  assert.match(readme, /arbitrary live entries/i);
   assert.match(readme, /set\/unset evidence only/i);
   assert.match(
     readme,
@@ -133,6 +136,8 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   assert.match(agents, /advisory/i);
   assert.match(agents, /`--model <curated-key>`/);
   assert.match(agents, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
+  assert.match(agents, /GET https:\/\/api\.gonkagate\.com\/v1\/models/);
+  assert.match(agents, /arbitrary live .*entries/i);
   assert.match(agents, /onboard --quick/i);
   assert.match(
     agents,

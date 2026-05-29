@@ -96,7 +96,7 @@ test("install uses the proven first-run path and still keeps the api key off arg
         prompts: {
           async readSecret() {
             secretPromptCalls += 1;
-            return "gp-should-not-be-used";
+            return "gp-live-catalog-secret";
           },
           async selectOption<TValue extends string>() {
             promptCalls += 1;
@@ -110,7 +110,7 @@ test("install uses the proven first-run path and still keeps the api key off arg
     assert.equal(result.path, "first_run");
     assert.equal(result.selectedModel?.key, "qwen3-235b");
     assert.equal(promptCalls, 1);
-    assert.equal(secretPromptCalls, 0);
+    assert.equal(secretPromptCalls, 1);
     assert.equal(result.configInspection?.status, "inspected");
 
     if (result.configInspection?.status === "inspected") {
@@ -144,6 +144,14 @@ test("install uses the proven first-run path and still keeps the api key off arg
       executions.some((execution) =>
         execution.args.some((argument) =>
           argument.includes("gp-first-run-secret"),
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      executions.some((execution) =>
+        execution.args.some((argument) =>
+          argument.includes("gp-live-catalog-secret"),
         ),
       ),
       false,

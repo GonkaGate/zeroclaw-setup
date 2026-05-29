@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 - add `moonshotai/Kimi-K2.6` to the curated GonkaGate model catalog under
   `kimi-k2.6` and make it the recommended default
+- add a pre-write GonkaGate `GET /v1/models` live-catalog gate that validates
+  response shape, requires every curated model to be present, and keeps
+  arbitrary live entries out of model selection
+- keep ZeroClaw first-run secret persistence on the proven native
+  `zeroclaw props set api-key` prompt path; stdin-fed first-run secret
+  transport remains blocked
 
 ## [0.1.0] - 2026-04-17
 

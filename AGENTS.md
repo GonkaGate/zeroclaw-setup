@@ -32,6 +32,8 @@ Current honest state:
   - proven first-run setup through `zeroclaw onboard --quick` plus hidden
     native `zeroclaw props set api-key`
   - split existing-config writes through `zeroclaw props`
+  - pre-write GonkaGate `GET /v1/models` validation with Bearer auth, response
+    shape checks, and curated-model presence enforcement
   - refusal-oriented runtime-quiesce gating
   - non-secret restore and explicit post-secret remediation boundaries
 - verify now returns final `pass`, `warn-shadowed`, and `fail` verdicts, while
@@ -62,9 +64,11 @@ The intended happy path is:
 1. user runs `npx zeroclaw-setup`
 2. installer validates local ZeroClaw availability
 3. installer collects a hidden GonkaGate API key
-4. installer offers a curated model picker
-5. installer writes only the narrow ZeroClaw provider contract it owns
-6. user later runs `npx zeroclaw-setup verify` for a read-only check
+4. installer verifies the live GonkaGate `/v1/models` catalog contains every
+   curated in-repo model
+5. installer offers a curated model picker
+6. installer writes only the narrow ZeroClaw provider contract it owns
+7. user later runs `npx zeroclaw-setup verify` for a read-only check
 
 The repository is onboarding-first. It is not intended to become a generic
 ZeroClaw provider configurator.
@@ -80,6 +84,10 @@ These are product-level decisions, not small refactors.
 - the ZeroClaw provider key is fixed to
   `custom:https://api.gonkagate.com/v1`
 - model choice comes only from a curated in-repo registry
+- install must require every curated model to be present in
+  `GET https://api.gonkagate.com/v1/models` before model selection or mutation
+- arbitrary live `/v1/models` entries must not become selectable unless they
+  are also added to the curated in-repo registry
 - API key entry must remain interactive and hidden in the main UX
 - the wrapper should write ZeroClaw config, not shell env, shell rc files, or
   `.env` files
@@ -137,13 +145,14 @@ These are implementation facts today:
 - the CLI now exposes a mutating install command plus a read-only `verify`
   command with shipped verdict semantics
 - `src/install/install-use-case.ts` now chooses between the proven first-run
-  path, the split native existing-config path, and explicit blocked outcomes
+  path, the split native existing-config path, live catalog validation, and
+  explicit blocked outcomes
 - `src/install/verify-use-case.ts` now resolves the active config path,
   evaluates the saved GonkaGate contract, checks runtime evidence through
   `zeroclaw status`, classifies env shadowing, and renders advisory
   `zeroclaw doctor` output on exact audited ZeroClaw `v0.6.9`
-- `src/install/deps.ts` now provides command, prompt, stdin, runtime, and
-  current-user process-inspection seams
+- `src/install/deps.ts` now provides command, prompt, HTTP, stdin, runtime,
+  and current-user process-inspection seams
 - `src/install/config-resolution.ts` mirrors stable `v0.6.9` source-level
   config precedence including `ZEROCLAW_CONFIG_DIR`,
   `ZEROCLAW_WORKSPACE`, and `active_workspace.toml`
@@ -175,8 +184,12 @@ These are implementation facts today:
   shadowing checks
 - the install and verify contract now treats saved `api_key` as set/unset
   evidence only; literal secret read-back is not part of the shipped proof
+- `src/install/gonkagate-models.ts` owns the GonkaGate `/v1/models` trust
+  boundary: canonical endpoint, Bearer auth, response-shape validation,
+  503 retry handling, and the requirement that all curated models are live
 - `src/constants/models.ts` contains the curated model registry
-- `src/cli.ts` already reserves `--model <key>` for curated model selection
+- `src/cli.ts` exposes optional `--model <key>` for curated model selection;
+  when omitted, install remains interactive after the live catalog gate
 - the current curated registry intentionally contains these GonkaGate-supported
   entries:
   - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
@@ -200,6 +213,8 @@ This repo currently does:
 - provide a real npm package skeleton and CLI binary
 - mutate ZeroClaw config through proven native install seams on exact audited
   `v0.6.9`
+- validate the live GonkaGate `/v1/models` catalog before model selection and
+  before any ZeroClaw config mutation
 - provide a read-only verify verdict flow with real version gating, config
   resolution, saved-config inspection, env-shadow classification, runtime
   status checks, and advisory doctor output
@@ -255,6 +270,7 @@ This repo currently does not do:
 │       ├── environment-overrides.ts
 │       ├── first-run-install.ts
 │       ├── first-run-proof.ts
+│       ├── gonkagate-models.ts
 │       ├── install-render.ts
 │       ├── install-use-case.ts
 │       ├── managed-contract.ts
@@ -310,9 +326,10 @@ they affect public contract.
 
 This directory now contains the shipped install and verify runtime: async
 ZeroClaw command detection, source-level config resolution, native-prompt-only
-first-run proof state, runtime-quiesce gating, split native write sequencing,
-saved-config inspection with set/unset secret evidence, final verify verdict
-logic, and audited mutation-readiness preflight.
+first-run proof state, live GonkaGate catalog validation, runtime-quiesce
+gating, split native write sequencing, saved-config inspection with set/unset
+secret evidence, final verify verdict logic, and audited mutation-readiness
+preflight.
 
 ### `.agents/skills/` and `.claude/skills/`
 
@@ -324,8 +341,8 @@ is an explicit reason to diverge.
 
 Contract and regression tests for package metadata, docs truthfulness, curated
 model registry, env override detection, fake-`zeroclaw` version gating,
-config resolution, runtime-quiesce refusal, install mutation proof, and verify
-behavior.
+config resolution, `/v1/models` catalog validation, runtime-quiesce refusal,
+install mutation proof, and verify behavior.
 
 ## Change Discipline
 

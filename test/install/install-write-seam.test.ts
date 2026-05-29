@@ -244,6 +244,77 @@ test("runtime-active existing-config installs refuse before prompting or writing
   }
 });
 
+test("live catalog auth failures block existing-config installs before model prompts or writes", async () => {
+  const harness = await createInstallHarness();
+  let secretPromptCalls = 0;
+  let modelPromptCalls = 0;
+  let catalogFetchCalls = 0;
+
+  try {
+    await harness.installFakeZeroClawOnPath({
+      behavior: {
+        secret: {
+          nativePromptValue: "gp-should-not-be-written",
+        },
+      },
+    });
+    await harness.writeFile(
+      "home/.zeroclaw/config.toml",
+      createExistingConfigText(),
+    );
+
+    const result = await runInstallUseCase(
+      {},
+      harness.createDependencies({
+        http: {
+          async fetch(_url, init) {
+            catalogFetchCalls += 1;
+            assert.equal(
+              init.headers.Authorization,
+              "Bearer gp-rejected-catalog-secret",
+            );
+
+            return {
+              status: 401,
+              async json() {
+                return {
+                  error: {
+                    code: "invalid_api_key",
+                  },
+                };
+              },
+            };
+          },
+        },
+        prompts: {
+          async readSecret() {
+            secretPromptCalls += 1;
+            return "gp-rejected-catalog-secret";
+          },
+          async selectOption<TValue extends string>() {
+            modelPromptCalls += 1;
+            return CURATED_MODEL.key as TValue;
+          },
+        },
+      }),
+    );
+
+    assert.equal(result.status, "blocked");
+    assert.equal(result.path, "existing_config");
+    assert.match(result.reason, /rejected the API key/i);
+    assert.equal(secretPromptCalls, 1);
+    assert.equal(modelPromptCalls, 0);
+    assert.equal(catalogFetchCalls, 1);
+    assert.equal(result.selectedModel, undefined);
+    assert.equal(result.liveCatalog, undefined);
+
+    const executions = await harness.readFakeZeroClawInvocations();
+    assert.deepEqual(executions, [["--version"], ["status", "--json"]]);
+  } finally {
+    await harness.cleanup();
+  }
+});
+
 test("pre-secret failure restores prior non-secret fields before returning failure", async () => {
   const harness = await createInstallHarness();
 

@@ -1,8 +1,5 @@
 import { Command } from "commander";
-import {
-  DEFAULT_MODEL_KEY,
-  getSupportedModelKeys,
-} from "./constants/models.js";
+import { getSupportedModelKeys } from "./constants/models.js";
 import {
   renderInstallResult,
   runInstallUseCase,
@@ -25,9 +22,8 @@ export function createProgram(): Command {
     .option(
       "-m, --model <key>",
       `Curated GonkaGate model key (${supportedModelKeys})`,
-      DEFAULT_MODEL_KEY,
     )
-    .action(async (options: { model: string }) => {
+    .action(async (options: { model?: string }) => {
       const result = await runInstallUseCase({ model: options.model });
       console.log(renderInstallResult(result));
     });

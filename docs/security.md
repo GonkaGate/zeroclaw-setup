@@ -12,6 +12,12 @@ The shipped install path preserves the security posture from the PRD:
   `default-provider` and `default-model` use
   `zeroclaw props set --no-interactive`, while `api-key` uses the hidden
   native `zeroclaw props set api-key` path
+- install uses the entered `gp-...` key to make a pre-write
+  `GET https://api.gonkagate.com/v1/models` request with Bearer auth, validates
+  the response shape, and refuses to continue unless every curated model is
+  present in the live catalog
+- live catalog entries outside the curated registry are ignored rather than
+  becoming selectable models
 - first-run setup uses the proven two-step native path:
   `zeroclaw onboard --quick` for config/workspace initialization, then
   `zeroclaw props set api-key` for the secret
@@ -26,6 +32,9 @@ The shipped install path preserves the security posture from the PRD:
   wrapper does not claim it can recover the prior `api-key` value
 - saved-config confirmation and `verify` use the same set/unset-only secret
   evidence; the wrapper does not claim literal saved secret read-back
+- on public native-prompt storage paths, the wrapper-held catalog-check key is
+  not reused as a new first-run persistence transport; ZeroClaw still collects
+  the stored secret through its native prompt
 - post-secret failures surface explicit secret remediation instead of pretending
   the prior secret was restored
 - stable ZeroClaw ordinary saves provide per-write atomic replace / transient
@@ -40,3 +49,5 @@ Current limitation:
   audited stable ZeroClaw `v0.6.9`
 - verify still exposes `api_key` as set/unset evidence only and keeps
   `zeroclaw doctor` advisory rather than verdict-defining
+- `/v1/models` proves API-key auth and live curated model visibility before
+  writes; it does not prove billing/quota for a later billable request

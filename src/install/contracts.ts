@@ -169,6 +169,12 @@ export interface RuntimeQuiesceInspection {
   readonly status: "active" | "ambiguous" | "quiesced";
 }
 
+export interface GonkaGateLiveCatalogSummary {
+  readonly curatedModelIds: readonly string[];
+  readonly endpoint: string;
+  readonly liveModelCount: number;
+}
+
 export interface ZeroClawDoctorSummary {
   readonly exitCode: number;
   readonly ok: boolean;
@@ -217,6 +223,7 @@ interface InstallResultBase {
   readonly commandProbe: ZeroClawCommandProbe;
   readonly configInspection?: SavedConfigInspection;
   readonly firstRunProof: FirstRunProofSummary;
+  readonly liveCatalog?: GonkaGateLiveCatalogSummary;
   readonly preflight: ConfigMutationPreflight;
   readonly managedFields: readonly ManagedConfigField[];
   readonly overrides: readonly EnvironmentOverride[];
