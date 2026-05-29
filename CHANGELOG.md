@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- add `minimaxai/minimax-m2.7` to the curated GonkaGate model catalog under
+  `minimax-m2.7`
 - add `moonshotai/Kimi-K2.6` to the curated GonkaGate model catalog under
   `kimi-k2.6` and make it the recommended default
 - add a pre-write GonkaGate `GET /v1/models` live-catalog gate that validates

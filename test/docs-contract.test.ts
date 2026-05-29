@@ -71,6 +71,7 @@ test("PRD resolves the stable-target v1 direction explicitly", () => {
     /`qwen3-235b` -> `qwen\/qwen3-235b-a22b-instruct-2507-fp8`/,
   );
   assert.match(prd, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
+  assert.match(prd, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
   assert.match(prd, /`--model <curated-key>`/);
 });
 
@@ -109,6 +110,7 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   assert.match(readme, /advisory/i);
   assert.match(readme, /`--model <curated-key>`/);
   assert.match(readme, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
+  assert.match(readme, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
   assert.match(readme, /`GET https:\/\/api\.gonkagate\.com\/v1\/models`/);
   assert.match(readme, /arbitrary live entries/i);
   assert.match(readme, /set\/unset evidence only/i);
@@ -136,6 +138,7 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   assert.match(agents, /advisory/i);
   assert.match(agents, /`--model <curated-key>`/);
   assert.match(agents, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
+  assert.match(agents, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
   assert.match(agents, /GET https:\/\/api\.gonkagate\.com\/v1\/models/);
   assert.match(agents, /arbitrary live .*entries/i);
   assert.match(agents, /onboard --quick/i);

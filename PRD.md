@@ -251,6 +251,7 @@ Rules:
 - v1 should ship exact curated entries:
   - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
   - `kimi-k2.6` -> `moonshotai/Kimi-K2.6`
+  - `minimax-m2.7` -> `minimaxai/minimax-m2.7`
 - `kimi-k2.6` is the recommended default
 - optional `--model <curated-key>` should be part of v1, but only for curated
   keys
@@ -597,8 +598,9 @@ A v1 launch is successful when:
 2. Existing-config updates must run as a runtime-quiesced best-effort ordered write. Stable `v0.6.9` does not expose an atomic multi-field provider update seam, and stable native secret reads do not expose the prior `api_key` value, so automatic restore is limited to the non-secret fields.
 3. `verify` should not hard-fail generically on provider env overrides. It should report an explicit `warn-shadowed` state with the message `saved config is correct but inactive`.
 4. The exact v1 curated model list contains `qwen3-235b` ->
-   `qwen/qwen3-235b-a22b-instruct-2507-fp8` and `kimi-k2.6` ->
-   `moonshotai/Kimi-K2.6`, with `kimi-k2.6` kept as the recommended
+   `qwen/qwen3-235b-a22b-instruct-2507-fp8`, `kimi-k2.6` ->
+   `moonshotai/Kimi-K2.6`, and `minimax-m2.7` ->
+   `minimaxai/minimax-m2.7`, with `kimi-k2.6` kept as the recommended
    default.
 5. v1 should support optional `--model <curated-key>` while keeping the default install UX interactive when the flag is omitted.
 6. v1 install should validate GonkaGate `GET /v1/models` before model

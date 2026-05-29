@@ -165,6 +165,7 @@ test("fetchCuratedGonkaGateModelCatalog rejects catalogs missing curated models"
       assert.ok(error instanceof GonkaGateModelsError);
       assert.equal(error.kind, "missing_supported_models");
       assert.match(error.message, /moonshotai\/Kimi-K2\.6/);
+      assert.match(error.message, /minimaxai\/minimax-m2\.7/);
       return true;
     },
   );

@@ -22,6 +22,12 @@ const MODEL_CATALOG_DATA = [
       "Recommended Moonshot AI Kimi K2.6 model for GonkaGate-backed ZeroClaw flows.",
     recommended: true,
   },
+  {
+    key: "minimax-m2.7",
+    label: "MiniMax M2.7",
+    modelId: "minimaxai/minimax-m2.7",
+    description: "MiniMax M2.7 model for GonkaGate-backed ZeroClaw flows.",
+  },
 ] as const satisfies readonly CuratedModel[];
 
 export const MODEL_CATALOG: readonly CuratedModel[] = Object.freeze(

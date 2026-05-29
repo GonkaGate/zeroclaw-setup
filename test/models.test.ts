@@ -43,6 +43,11 @@ test("curated model catalog exposes supported GonkaGate models", () => {
         modelId: "moonshotai/Kimi-K2.6",
         recommended: true,
       },
+      {
+        key: "minimax-m2.7",
+        modelId: "minimaxai/minimax-m2.7",
+        recommended: false,
+      },
     ],
   );
 });

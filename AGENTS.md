@@ -194,6 +194,7 @@ These are implementation facts today:
   entries:
   - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
   - `kimi-k2.6` -> `moonshotai/Kimi-K2.6` (recommended default)
+  - `minimax-m2.7` -> `minimaxai/minimax-m2.7`
 - a mirrored skill pack imported from `opencode-setup` is present under
   `.agents/skills/` and `.claude/skills/`
 - the repository already has CI, release-please, npm publish automation,
