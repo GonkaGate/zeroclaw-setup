@@ -1,0 +1,71 @@
+{
+  "name": "zeroclaw-setup",
+  "version": "0.1.0",
+  "description": "Onboarding-first CLI for configuring ZeroClaw to use GonkaGate through audited v0.6.9 install and verify flows.",
+  "homepage": "https://github.com/GonkaGate/zeroclaw-setup#readme",
+  "bugs": {
+    "url": "https://github.com/GonkaGate/zeroclaw-setup/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GonkaGate/zeroclaw-setup.git"
+  },
+  "type": "module",
+  "bin": {
+    "zeroclaw-setup": "bin/zeroclaw-setup.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "docs",
+    "scripts",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx src/cli.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "package:check": "publint",
+    "prepack": "npm run ci",
+    "test": "npm run build && node scripts/run-tests.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "ci": "npm run typecheck && npm run test && npm run lint && npm run format:check && npm run package:check"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "keywords": [
+    "gonkagate",
+    "zeroclaw",
+    "zeroclaw onboarding",
+    "custom provider",
+    "openai-compatible",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "packageManager": "npm@11.11.1",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.6.1",
+    "@types/semver": "^7.7.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0",
+    "prettier": "^3.6.2",
+    "publint": "^0.3.15",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.58.2"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "@inquirer/prompts": "^8.3.2",
+    "commander": "^14.0.3",
+    "semver": "^7.7.4",
+    "write-file-atomic": "^7.0.1"
+  }
+}
