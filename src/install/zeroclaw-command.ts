@@ -13,7 +13,7 @@ import {
 } from "./environment-overrides.js";
 
 const ZEROCLAW_VERSION_PATTERN = /\bv?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/u;
-const AUDITED_STABLE_VERSION = "0.6.9";
+const MINIMUM_SUPPORTED_VERSION = "0.6.9";
 
 interface ZeroClawCommandExecutionOptions {
   readonly env?: NodeJS.ProcessEnv;
@@ -46,31 +46,21 @@ export function classifyZeroClawVersionSupport(
   installedVersion: string,
 ): ZeroClawVersionSupport {
   const normalizedInstalledVersion = valid(installedVersion);
-  const normalizedAuditedVersion = valid(AUDITED_STABLE_VERSION);
+  const normalizedMinimumVersion = valid(MINIMUM_SUPPORTED_VERSION);
 
   if (normalizedInstalledVersion === null) {
     throw new Error(`Invalid ZeroClaw version: ${installedVersion}`);
   }
 
-  if (normalizedAuditedVersion === null) {
+  if (normalizedMinimumVersion === null) {
     throw new Error(
-      `Invalid audited ZeroClaw version: ${AUDITED_STABLE_VERSION}`,
+      `Invalid minimum ZeroClaw version: ${MINIMUM_SUPPORTED_VERSION}`,
     );
   }
 
-  if (normalizedInstalledVersion === normalizedAuditedVersion) {
-    return "supported_v0_6_9";
-  }
-
-  if (normalizedInstalledVersion.startsWith("0.6.")) {
-    return "unaudited_v0_6_x";
-  }
-
-  if (compare(normalizedInstalledVersion, "0.7.0-0") >= 0) {
-    return "unsupported_v0_7_plus";
-  }
-
-  return "unsupported_other";
+  return compare(normalizedInstalledVersion, normalizedMinimumVersion) >= 0
+    ? "supported"
+    : "below_minimum";
 }
 
 export async function runZeroClawCommand(
@@ -299,18 +289,14 @@ export function renderZeroClawSupportSummary(
   commandProbe: ZeroClawCommandProbe,
 ): string {
   switch (commandProbe.support) {
-    case "supported_v0_6_9":
-      return `supported (${commandProbe.installedVersion ?? AUDITED_STABLE_VERSION})`;
+    case "supported":
+      return `supported (${commandProbe.installedVersion ?? MINIMUM_SUPPORTED_VERSION})`;
     case "missing_command":
       return `missing (${commandProbe.error ?? "unknown error"})`;
     case "version_unparseable":
       return `unparseable (${commandProbe.error ?? "unknown error"})`;
-    case "unaudited_v0_6_x":
-      return `unaudited ${commandProbe.installedVersion ?? "0.6.x"}`;
-    case "unsupported_v0_7_plus":
-      return `unsupported ${commandProbe.installedVersion ?? "v0.7+"}`;
-    case "unsupported_other":
-      return `unsupported ${commandProbe.installedVersion ?? "unknown version"}`;
+    case "below_minimum":
+      return `below minimum ${commandProbe.installedVersion ?? "unknown version"}`;
     default:
       return "unknown";
   }

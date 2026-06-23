@@ -39,7 +39,8 @@ npm run typecheck
 
 `npx zeroclaw-setup` now mutates config only when all of these are true:
 
-- installed ZeroClaw is exactly audited `v0.6.9`
+- installed ZeroClaw is available, parseable, and not older than audited
+  `v0.6.9`
 - the resolved config shape stays inside the audited top-level contract
 - the runtime-quiesce gate reports no active or ambiguous ZeroClaw runtime
 - the entered `gp-...` key can call GonkaGate
@@ -52,7 +53,7 @@ npm run typecheck
 
 Common install blockers:
 
-- unsupported or unaudited ZeroClaw runtime
+- missing, unparseable, or too-old ZeroClaw runtime
 - unknown top-level keys in the resolved `config.toml`
 - active or ambiguous runtime state from `zeroclaw status --json` or local
   process inspection

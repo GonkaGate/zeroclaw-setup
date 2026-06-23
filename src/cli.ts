@@ -16,7 +16,7 @@ export function createProgram(): Command {
   program
     .name("zeroclaw-setup")
     .description(
-      "GonkaGate-backed ZeroClaw onboarding with audited v0.6.9 install and read-only verify flows.",
+      "GonkaGate-backed ZeroClaw onboarding with install and read-only verify flows.",
     )
     .showHelpAfterError()
     .option(
@@ -31,7 +31,7 @@ export function createProgram(): Command {
   program
     .command("verify")
     .description(
-      "Read-only verification of the saved GonkaGate contract and active ZeroClaw runtime on audited v0.6.9.",
+      "Read-only verification of the saved GonkaGate contract and active ZeroClaw runtime.",
     )
     .action(async () => {
       const result = await runVerifyUseCase();

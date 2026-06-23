@@ -16,14 +16,11 @@ test("parseZeroClawVersion extracts semver from CLI output", () => {
   assert.equal(parseZeroClawVersion("no version here"), null);
 });
 
-test("classifyZeroClawVersionSupport gates audited and unaudited versions", () => {
-  assert.equal(classifyZeroClawVersionSupport("0.6.9"), "supported_v0_6_9");
-  assert.equal(classifyZeroClawVersionSupport("0.6.8"), "unaudited_v0_6_x");
-  assert.equal(
-    classifyZeroClawVersionSupport("0.7.0-beta.1"),
-    "unsupported_v0_7_plus",
-  );
-  assert.equal(classifyZeroClawVersionSupport("0.5.9"), "unsupported_other");
+test("classifyZeroClawVersionSupport allows versions at or above the minimum", () => {
+  assert.equal(classifyZeroClawVersionSupport("0.6.9"), "supported");
+  assert.equal(classifyZeroClawVersionSupport("0.7.0-beta.1"), "supported");
+  assert.equal(classifyZeroClawVersionSupport("1.0.0"), "supported");
+  assert.equal(classifyZeroClawVersionSupport("0.6.8"), "below_minimum");
 });
 
 test("detectZeroClaw reports missing command", async () => {
@@ -39,7 +36,7 @@ test("detectZeroClaw reports missing command", async () => {
   }
 });
 
-test("detectZeroClaw accepts the audited v0.6.9 runtime", async () => {
+test("detectZeroClaw accepts the minimum v0.6.9 runtime", async () => {
   const harness = await createInstallHarness();
 
   try {
@@ -49,7 +46,7 @@ test("detectZeroClaw accepts the audited v0.6.9 runtime", async () => {
 
     const probe = await detectZeroClaw(harness.createDependencies());
 
-    assert.equal(probe.support, "supported_v0_6_9");
+    assert.equal(probe.support, "supported");
     assert.equal(probe.installedVersion, "0.6.9");
     assert.deepEqual(await harness.readFakeZeroClawInvocations(), [
       ["--version"],
@@ -59,7 +56,7 @@ test("detectZeroClaw accepts the audited v0.6.9 runtime", async () => {
   }
 });
 
-test("detectZeroClaw flags unaudited v0.6.x variants", async () => {
+test("detectZeroClaw flags versions below the minimum", async () => {
   const harness = await createInstallHarness();
 
   try {
@@ -69,14 +66,14 @@ test("detectZeroClaw flags unaudited v0.6.x variants", async () => {
 
     const probe = await detectZeroClaw(harness.createDependencies());
 
-    assert.equal(probe.support, "unaudited_v0_6_x");
+    assert.equal(probe.support, "below_minimum");
     assert.equal(probe.installedVersion, "0.6.8");
   } finally {
     await harness.cleanup();
   }
 });
 
-test("detectZeroClaw rejects v0.7+ including prereleases", async () => {
+test("detectZeroClaw accepts v0.7+ including prereleases", async () => {
   const harness = await createInstallHarness();
 
   try {
@@ -86,7 +83,7 @@ test("detectZeroClaw rejects v0.7+ including prereleases", async () => {
 
     const probe = await detectZeroClaw(harness.createDependencies());
 
-    assert.equal(probe.support, "unsupported_v0_7_plus");
+    assert.equal(probe.support, "supported");
     assert.equal(probe.installedVersion, "0.7.0-beta.1");
   } finally {
     await harness.cleanup();

@@ -152,12 +152,12 @@ test("install short-circuits before secret intake on unsupported config shapes",
   }
 });
 
-test("install short-circuits before secret intake on unsupported ZeroClaw versions", async () => {
+test("install short-circuits before secret intake on old ZeroClaw versions", async () => {
   const harness = await createInstallHarness();
 
   try {
     await harness.installFakeZeroClawOnPath({
-      output: "zeroclaw 0.7.0-beta.1",
+      output: "zeroclaw 0.6.8",
     });
 
     const result = await runInstallUseCase({}, harness.createDependencies());

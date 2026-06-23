@@ -24,8 +24,9 @@ Current honest state:
 - the public CLI exists and is buildable, testable, and publishable
 - install now performs real Phase 2 mutation work on audited ZeroClaw
   `v0.6.9` through proven ZeroClaw-native seams
-- `verify` now performs the shipped read-only Phase 3 verdict flow on audited
-  ZeroClaw `v0.6.9`: command/version gating, active config resolution,
+- newer parsed ZeroClaw versions are not blocked solely because they are newer
+- `verify` now performs the shipped read-only Phase 3 verdict flow: minimum
+  version gating, active config resolution,
   saved-config contract checks, runtime summary through `zeroclaw status`, and
   advisory `zeroclaw doctor` output
 - install mutation now covers:
@@ -128,9 +129,8 @@ These are product-level decisions, not small refactors.
   - `MODEL`
   - `ZEROCLAW_API_KEY`
   - `API_KEY`
-- stable-target runtime support is intentionally limited to audited ZeroClaw
-  `v0.6.9` until broader `v0.6.x` compatibility or `v0.7.0-beta.*` / Config
-  V2 is explicitly re-audited
+- runtime support has a minimum version floor at audited ZeroClaw `v0.6.9`;
+  newer parsed versions are allowed to reach the real install and verify checks
 - arbitrary base URLs are out of scope for v1
 - arbitrary free-form model IDs are out of scope for v1
 - shell profile mutation is out of scope
@@ -150,7 +150,8 @@ These are implementation facts today:
 - `src/install/verify-use-case.ts` now resolves the active config path,
   evaluates the saved GonkaGate contract, checks runtime evidence through
   `zeroclaw status`, classifies env shadowing, and renders advisory
-  `zeroclaw doctor` output on exact audited ZeroClaw `v0.6.9`
+  `zeroclaw doctor` output when ZeroClaw is available and not older than
+  `v0.6.9`
 - `src/install/deps.ts` now provides command, prompt, HTTP, stdin, runtime,
   and current-user process-inspection seams
 - `src/install/config-resolution.ts` mirrors stable `v0.6.9` source-level
@@ -177,9 +178,9 @@ These are implementation facts today:
     `v0.6.9` does not expose the prior `api-key` value
 - the shipped verify behavior for provider env shadowing is an explicit
   `saved config is correct but inactive` warning state
-- the current repository target is audited stable ZeroClaw `v0.6.9` only, so
-  the planned managed contract follows stable top-level provider fields rather
-  than prerelease `providers.*` config-v2 work
+- the current managed contract is grounded in audited stable ZeroClaw `v0.6.9`,
+  so it follows stable top-level provider fields rather than prerelease
+  `providers.*` config-v2 work
 - `src/install/environment-overrides.ts` already contains the runtime env
   shadowing checks
 - the install and verify contract now treats saved `api_key` as set/unset
@@ -203,8 +204,8 @@ These are implementation facts today:
 Important limitation:
 
 - the repository now ships install mutation plus final read-only verify
-  verdicts, but compatibility should still not be documented beyond exact
-  audited `v0.6.9`
+  verdicts, but compatibility claims should stay tied to real setup and verify
+  checks rather than exact-version allowlists
 
 ## What The Repo Does And Does Not Do
 
@@ -212,8 +213,8 @@ This repo currently does:
 
 - define the intended product contract for ZeroClaw onboarding
 - provide a real npm package skeleton and CLI binary
-- mutate ZeroClaw config through proven native install seams on exact audited
-  `v0.6.9`
+- mutate ZeroClaw config through proven native install seams when ZeroClaw is
+  available and not older than audited `v0.6.9`
 - validate the live GonkaGate `/v1/models` catalog before model selection and
   before any ZeroClaw config mutation
 - provide a read-only verify verdict flow with real version gating, config

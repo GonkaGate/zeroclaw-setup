@@ -16,16 +16,16 @@ Recommendation: `yes with caveats`
 
 Recommended product shape: standalone GonkaGate package, implemented as a thin ZeroClaw-aware wrapper
 
-Stable target gate: this PRD is intentionally scoped to audited stable
-ZeroClaw `v0.6.9` (the current stable tag as of April 17, 2026).
+Stable target floor: this PRD is grounded in audited stable ZeroClaw `v0.6.9`
+(the current stable tag as of April 17, 2026).
 
 Broader `v0.6.x` compatibility should not be claimed until the relevant write
 and verify seams are re-audited against those exact tags.
 
-It does not claim compatibility with prerelease `v0.7.0-beta.*` Config V2.
-If the installed ZeroClaw binary is on `v0.7+` or another unaudited config
-contract, install and verify should hard-warn or fail until this PRD is
-re-audited.
+It does not claim blanket compatibility with prerelease `v0.7.0-beta.*` Config
+V2. Newer parsed ZeroClaw versions should not be blocked solely by version; the
+real install and verify checks should surface actual config or runtime
+incompatibilities.
 
 Primary public command:
 
@@ -626,12 +626,12 @@ all of the following in disposable ZeroClaw workspaces:
 
 ## Compatibility Gate
 
-This document is intentionally valid only for audited stable ZeroClaw `v0.6.9`.
+This document is grounded in audited stable ZeroClaw `v0.6.9`.
 
 Prerelease `v0.7.0-beta.*` and later Config V2 releases are a watchlist, not a
-supported runtime target for this v1 plan. Until a fresh audit lands, install
-and verify should hard-warn or fail on that newer contract rather than pretend
-compatibility.
+blanket compatibility claim for this v1 plan. Until a fresh audit lands, install
+and verify should fail only on real runtime/config incompatibilities rather than
+hard-blocking by version.
 
 ## Readiness Decision
 
@@ -645,9 +645,9 @@ readiness:
 1. first-run setup must stay on a stable native seam without violating the
    GonkaGate one-command UX
 2. scripted three-field writes, unknown-key refusal, runtime-quiesce handling,
-   and read-only verify must be proven against the exact stable `v0.6.9`
+   and read-only verify must stay grounded in the audited stable `v0.6.9`
    contract
 
 The installer should still avoid direct TOML mutation, and it should not claim
-compatibility with `v0.7.0-beta.*` or later config-v2 contracts until they are
-re-audited.
+blanket compatibility with `v0.7.0-beta.*` or later config-v2 contracts until
+they are re-audited.

@@ -29,10 +29,8 @@ export interface ZeroClawCommandResult {
 
 export type ZeroClawVersionSupport =
   | "missing_command"
-  | "supported_v0_6_9"
-  | "unaudited_v0_6_x"
-  | "unsupported_v0_7_plus"
-  | "unsupported_other"
+  | "supported"
+  | "below_minimum"
   | "version_unparseable";
 
 export interface ZeroClawCommandProbe {

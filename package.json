@@ -1,7 +1,7 @@
 {
   "name": "zeroclaw-setup",
   "version": "0.1.0",
-  "description": "Onboarding-first CLI for configuring ZeroClaw to use GonkaGate through audited v0.6.9 install and verify flows.",
+  "description": "Onboarding-first CLI for configuring ZeroClaw to use GonkaGate.",
   "homepage": "https://github.com/GonkaGate/zeroclaw-setup#readme",
   "bugs": {
     "url": "https://github.com/GonkaGate/zeroclaw-setup/issues"

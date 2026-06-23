@@ -14,7 +14,7 @@ This repository currently contains:
 
 This repository does not currently contain:
 
-- compatibility claims beyond exact audited stable `v0.6.9`
+- compatibility claims not backed by setup or verify checks
 - arbitrary custom model-id support
 - arbitrary custom base URL support
 - shell profile or `.env` mutation

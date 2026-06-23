@@ -110,11 +110,11 @@ export function preflightMutationReadiness(
   commandProbe: ZeroClawCommandProbe,
   inspection: SavedConfigInspection,
 ): ConfigMutationPreflight {
-  if (commandProbe.support !== "supported_v0_6_9") {
+  if (commandProbe.support !== "supported") {
     return {
       outcome: "unsupported_version",
       reason:
-        "Read-only foundations only support audited ZeroClaw v0.6.9; later mutation work remains gated for every other runtime.",
+        "ZeroClaw is missing, unparseable, or older than the supported minimum runtime.",
       unknownTopLevelKeys: [],
     };
   }
@@ -124,7 +124,7 @@ export function preflightMutationReadiness(
       return {
         outcome: "eligible_first_run",
         reason:
-          "No saved config exists at the resolved path, so first-run mutation proof can proceed later on the audited v0.6.9 runtime.",
+          "No saved config exists at the resolved path, so first-run mutation can proceed on the supported runtime.",
         unknownTopLevelKeys: [],
       };
     case "unreadable":
