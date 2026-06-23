@@ -66,7 +66,7 @@ function createUnsupportedVersionPreflight(): ConfigMutationPreflight {
   return {
     outcome: "unsupported_version",
     reason:
-      "Install mutation is gated to audited ZeroClaw v0.6.9. Unsupported or unaudited runtimes stay blocked until a fresh audit lands.",
+      "ZeroClaw is missing, unparseable, or older than the supported minimum runtime.",
     unknownTopLevelKeys: [],
   };
 }
@@ -193,7 +193,7 @@ async function loadInstallContext(
   let configInspection: SavedConfigInspection | undefined;
   let preflight = createUnsupportedVersionPreflight();
 
-  if (commandProbe.support === "supported_v0_6_9") {
+  if (commandProbe.support === "supported") {
     const resolvedConfig =
       await resolveActiveZeroClawConfig(installDependencies);
     configInspection = await inspectSavedZeroClawConfig(

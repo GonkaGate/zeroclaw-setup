@@ -25,7 +25,7 @@ custom provider.
 
 The repository is still intentionally narrow: it owns only the GonkaGate
 provider contract, delegates persistence to ZeroClaw-native seams, and stays
-pinned to audited stable ZeroClaw `v0.6.9`.
+on the audited stable ZeroClaw `v0.6.9` config contract.
 
 Follow-up verification command:
 
@@ -56,9 +56,9 @@ Current status:
   selectable models
 - install refuses mutation when the runtime is active or ambiguous, when the
   config contains unknown top-level keys, or when the installed ZeroClaw
-  runtime is outside audited `v0.6.9`
-- `verify` now performs the shipped Phase 3 read-only verdict flow on audited
-  `v0.6.9`: exact-version gating, active config resolution, saved-config
+  runtime is missing, unparseable, or older than `v0.6.9`
+- `verify` now performs the shipped Phase 3 read-only verdict flow: minimum
+  version gating, active config resolution, saved-config
   contract checks, runtime summary through `zeroclaw status`, and advisory
   `zeroclaw doctor` output
 - `verify` returns explicit `pass`, `warn-shadowed`, and `fail` results, with
@@ -163,10 +163,9 @@ The code hard-codes the GonkaGate contract from the PRD:
   - `MODEL`
   - `ZEROCLAW_API_KEY`
   - `API_KEY`
-- stable-target compatibility gate:
-  - audited stable ZeroClaw `v0.6.9` only
-  - unaudited `v0.6.x` builds and prerelease `v0.7.0-beta.*` / config-v2
-    targets stay blocked
+- ZeroClaw runtime gate:
+  - minimum supported version: audited stable ZeroClaw `v0.6.9`
+  - newer versions are not blocked solely because they are newer
 
 ## CLI Status
 
@@ -179,8 +178,9 @@ npx zeroclaw-setup verify
 
 Current shipped behavior:
 
-- `npx zeroclaw-setup` performs real Phase 2 install mutation on exact
-  audited `v0.6.9` when read-only gating passes
+- `npx zeroclaw-setup` performs real Phase 2 install mutation when the
+  installed ZeroClaw runtime is at least audited `v0.6.9` and read-only gating
+  passes
 - install asks for a hidden GonkaGate API key after the chosen mutation path is
   known and the runtime quiesce gate has passed, checks the live
   `GET /v1/models` catalog, then prompts for a curated model when `--model` is
@@ -193,9 +193,8 @@ Current shipped behavior:
   through its hidden native `zeroclaw props set api-key` prompt
 - install does not place the GonkaGate API key on argv in the shipped happy
   path
-- `npx zeroclaw-setup verify` now performs shipped read-only verification
-  on exact audited `v0.6.9`, including final `pass` / `warn-shadowed` /
-  `fail` verdicts
+- `npx zeroclaw-setup verify` now performs shipped read-only verification,
+  including final `pass` / `warn-shadowed` / `fail` verdicts
 - verify and saved-config confirmation use `api_key` set/unset evidence only;
   they do not claim literal saved secret read-back
 

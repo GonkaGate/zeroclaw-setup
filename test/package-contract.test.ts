@@ -28,7 +28,7 @@ test("package metadata matches the repository contract", () => {
   assert.doesNotMatch(packageJson.description, /Scaffolded CLI/i);
   assert.match(
     packageJson.description,
-    /audited v0\.6\.9 install and verify flows/i,
+    /configuring ZeroClaw to use GonkaGate/i,
   );
   assert.equal(packageJson.bin["zeroclaw-setup"], "bin/zeroclaw-setup.js");
   assert.equal(typeof packageJson.scripts.ci, "string");

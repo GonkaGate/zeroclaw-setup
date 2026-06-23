@@ -85,23 +85,23 @@ without violating the product and security invariants already pinned in
 - [ ] The repository still describes install and verify as scaffolds until
       mutating proof lands.
 
-## Task 1: Add a Shared ZeroClaw Command Gateway and Stable-Target Version Gate
+## Task 1: Add a Shared ZeroClaw Command Gateway and Minimum-Version Gate
 
 **Description:** Create a reusable execution seam for ZeroClaw CLI calls and
-introduce explicit support-state classification around the audited stable target
-`v0.6.9`. This gives install and verify one trustworthy way to detect missing
-CLI availability, supported stable runtime, unaudited `v0.6.x` variants, and
-unsupported `v0.7+` / Config V2 targets before deeper logic branches.
+introduce explicit support-state classification around the audited stable
+minimum `v0.6.9`. This gives install and verify one trustworthy way to detect
+missing CLI availability, unparseable output, and runtimes older than the
+minimum before deeper logic branches.
 
 **Acceptance criteria:**
 
 - [ ] A shared command layer can execute ZeroClaw read-only commands and return
       stdout, stderr, exit status, and parsed version metadata.
-- [ ] Install and verify can distinguish at least these states:
-      missing command, supported `v0.6.9`, unaudited other `v0.6.x`, and
-      unsupported `v0.7+`.
-- [ ] User-facing messaging stays truthful and does not claim compatibility
-      beyond the audited target.
+- [ ] Install and verify can distinguish at least these states: missing command,
+      parseable supported runtime, unparseable output, and below-minimum
+      runtime.
+- [ ] User-facing messaging stays truthful and does not claim blanket
+      compatibility beyond the audited contract.
 
 **Verification:**
 
@@ -172,7 +172,7 @@ version contracts before any install path attempts a write.
 **Acceptance criteria:**
 
 - [ ] Preflight distinguishes audited stable `v0.6.9` top-level shapes from
-      unknown keys, unsupported layouts, and unaudited `v0.7+` contracts.
+      unknown keys and unsupported layouts.
 - [ ] Mutating flows can stop before any write when preflight marks the config
       as unsupported.
 - [ ] Refusal messaging directs the user toward native/manual remediation
@@ -537,14 +537,14 @@ existing-config support land on different timelines.
 
 ## Risks and Mitigations
 
-| Risk                                              | Impact | Mitigation                                                                                             |
-| ------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
-| First-run native seam fails proof                 | High   | Keep first-run mutation scaffolded and ship only the proven existing-config or verify slices.          |
-| Runtime-quiesce detection is unreliable           | High   | Prefer explicit refusal over risky best-effort background mutation.                                    |
-| Upstream ZeroClaw contract drifts beyond `v0.6.9` | High   | Gate by version and refuse unaudited `v0.6.x` / `v0.7+` targets until re-audited.                      |
-| Secret-input flow regresses into argv transport   | High   | Keep secret entry interactive or stdin-like only and add regression checks around argv exposure.       |
-| Config resolution diverges from ZeroClaw behavior | Medium | Pin fixtures for default, workspace-root, and legacy layouts and keep resolution logic source-audited. |
-| Docs over-claim partially shipped behavior        | Medium | Make doc reconciliation a release-blocking task with `npm run ci` in the final checkpoint.             |
+| Risk                                              | Impact | Mitigation                                                                                                       |
+| ------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------- |
+| First-run native seam fails proof                 | High   | Keep first-run mutation scaffolded and ship only the proven existing-config or verify slices.                    |
+| Runtime-quiesce detection is unreliable           | High   | Prefer explicit refusal over risky best-effort background mutation.                                              |
+| Upstream ZeroClaw contract drifts beyond `v0.6.9` | High   | Let real install and verify checks surface config/runtime incompatibilities; do not hard-block by version alone. |
+| Secret-input flow regresses into argv transport   | High   | Keep secret entry interactive or stdin-like only and add regression checks around argv exposure.                 |
+| Config resolution diverges from ZeroClaw behavior | Medium | Pin fixtures for default, workspace-root, and legacy layouts and keep resolution logic source-audited.           |
+| Docs over-claim partially shipped behavior        | Medium | Make doc reconciliation a release-blocking task with `npm run ci` in the final checkpoint.                       |
 
 ## Resolved Planning Decisions
 

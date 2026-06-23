@@ -39,7 +39,7 @@ function createUnsupportedVersionPreflight(): ConfigMutationPreflight {
   return {
     outcome: "unsupported_version",
     reason:
-      "Verify is pinned to the audited ZeroClaw v0.6.9 runtime until a broader audit lands.",
+      "ZeroClaw is missing, unparseable, or older than the supported minimum runtime.",
     unknownTopLevelKeys: [],
   };
 }
@@ -121,7 +121,7 @@ function evaluateSavedContract(
       ? configInspection.apiKeyState
       : undefined;
 
-  const supportOk = support === "supported_v0_6_9";
+  const supportOk = support === "supported";
   const preflightOk =
     preflight.outcome === "eligible_existing_config" ||
     preflight.outcome === "eligible_first_run";
@@ -135,8 +135,8 @@ function evaluateSavedContract(
       "support",
       supportOk,
       supportOk
-        ? "Audited ZeroClaw v0.6.9 is installed."
-        : "Verify can only pass on the audited ZeroClaw v0.6.9 target.",
+        ? "Supported ZeroClaw runtime is installed."
+        : "Verify requires ZeroClaw to be available, parseable, and not older than the supported minimum runtime.",
     ),
     createSavedContractCheck(
       "preflight",
@@ -310,7 +310,7 @@ async function inspectDoctorAdvisory(
       attempted: false,
       ok: false,
       reason:
-        "zeroclaw doctor was not attempted because the runtime is outside the audited v0.6.9 target.",
+        "zeroclaw doctor was not attempted because the runtime is missing, unparseable, or older than the supported minimum.",
     };
   }
 
@@ -471,7 +471,7 @@ export async function runVerifyUseCase(
   let configInspection: SavedConfigInspection | undefined;
   let preflight = createUnsupportedVersionPreflight();
 
-  if (commandProbe.support === "supported_v0_6_9") {
+  if (commandProbe.support === "supported") {
     const resolvedConfig =
       await resolveActiveZeroClawConfig(installDependencies);
     configInspection = await inspectSavedZeroClawConfig(
@@ -498,7 +498,7 @@ export async function runVerifyUseCase(
   );
   const doctorAdvisory = await inspectDoctorAdvisory(
     installDependencies,
-    commandProbe.support === "supported_v0_6_9",
+    commandProbe.support === "supported",
   );
 
   return {
@@ -530,7 +530,7 @@ export function renderVerifyResult(result: VerifyResult): string {
     result.status === "warn-shadowed"
       ? "saved config is correct but inactive"
       : result.status === "pass"
-        ? "Saved GonkaGate config and active runtime evidence agree for audited ZeroClaw v0.6.9."
+        ? "Saved GonkaGate config and active runtime evidence agree."
         : "Saved GonkaGate config or active runtime evidence could not be verified cleanly.";
   const lines = [
     headline,

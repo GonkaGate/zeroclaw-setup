@@ -32,7 +32,8 @@ gating, runtime refusal, and truthful docs/tests.
 
 ## Shipped Install Behavior
 
-Install and verify still share one exact-`v0.6.9` command/version gate.
+Install and verify share one minimum-version command gate. ZeroClaw versions
+newer than audited `v0.6.9` are not blocked solely because they are newer.
 
 After that gate:
 
@@ -116,11 +117,11 @@ Final verify verdicts are:
   contract
 - `warn-shadowed` when saved config is correct but env overrides make it
   inactive
-- `fail` when the saved contract, runtime evidence, or audited version gate
-  does not match the supported `v0.6.9` contract
+- `fail` when the saved contract, runtime evidence, or minimum-version gate
+  does not match the supported contract
 
 ## What Is Still Not Shipped
 
-- compatibility claims beyond exact audited stable `v0.6.9`
+- compatibility claims not backed by setup or verify checks
 - arbitrary base URLs, arbitrary model IDs, shell profile mutation, and `.env`
   writing
