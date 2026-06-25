@@ -15,6 +15,21 @@ All notable changes to this project will be documented in this file.
   `zeroclaw props set api-key` prompt path; stdin-fed first-run secret
   transport remains blocked
 
+## [0.2.0](https://github.com/GonkaGate/zeroclaw-setup/compare/v0.1.0...v0.2.0) (2026-06-25)
+
+
+### Features
+
+* add Kimi K2.6 model default ([1918310](https://github.com/GonkaGate/zeroclaw-setup/commit/191831054985baf4aef79cc5fc73720665559e27))
+* add MiniMax M2.7 curated model ([14b20a7](https://github.com/GonkaGate/zeroclaw-setup/commit/14b20a76006526fd68f76cf6aa780d4befeb3fe2))
+* add MiniMax M2.7 curated model ([25bed73](https://github.com/GonkaGate/zeroclaw-setup/commit/25bed7386207a03ceff9feb13fa17beec4e2adb1))
+
+
+### Bug Fixes
+
+* allow future ZeroClaw versions ([3be15e2](https://github.com/GonkaGate/zeroclaw-setup/commit/3be15e2e7f529a0318ceb067448b0fcdccaba85c))
+* allow future ZeroClaw versions ([b01a004](https://github.com/GonkaGate/zeroclaw-setup/commit/b01a004f7a35ffefcf0eb6c0e6215f4408b61163))
+
 ## [0.1.0] - 2026-04-17
 
 - bootstrap repository structure, CI/CD, TypeScript build, docs, and scaffolded CLI surfaces
