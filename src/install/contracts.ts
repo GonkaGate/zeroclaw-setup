@@ -1,4 +1,4 @@
-import type { CuratedModel } from "../constants/models.js";
+import type { GonkaGateModelCatalogEntry } from "./gonkagate-models.js";
 
 export type EnvironmentOverrideKind =
   | "api_key"
@@ -168,9 +168,9 @@ export interface RuntimeQuiesceInspection {
 }
 
 export interface GonkaGateLiveCatalogSummary {
-  readonly curatedModelIds: readonly string[];
   readonly endpoint: string;
   readonly liveModelCount: number;
+  readonly modelIds: readonly string[];
 }
 
 export interface ZeroClawDoctorSummary {
@@ -226,13 +226,13 @@ interface InstallResultBase {
   readonly managedFields: readonly ManagedConfigField[];
   readonly overrides: readonly EnvironmentOverride[];
   readonly path: InstallPath;
-  readonly selectedModel?: CuratedModel;
+  readonly selectedModel?: GonkaGateModelCatalogEntry;
   readonly status: InstallStatus;
 }
 
 export interface InstallSuccessResult extends InstallResultBase {
   readonly path: Exclude<InstallPath, "none">;
-  readonly selectedModel: CuratedModel;
+  readonly selectedModel: GonkaGateModelCatalogEntry;
   readonly status: "success";
   readonly writeResult: NativeWriteSuccess;
 }

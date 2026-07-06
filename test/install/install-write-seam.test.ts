@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { resolveModelByKey } from "../../src/constants/models.js";
 import { ZEROCLAW_PROVIDER_KEY } from "../../src/constants/gateway.js";
 import { runInstallUseCase } from "../../src/install/install-use-case.js";
-import { createInstallHarness } from "./harness.js";
+import {
+  createInstallHarness,
+  TEST_EXTRA_LIVE_MODEL_ID,
+  TEST_LIVE_MODEL_ID,
+} from "./harness.js";
 
-const CURATED_MODEL = resolveModelByKey("qwen3-235b");
+const SELECTED_MODEL_ID = TEST_EXTRA_LIVE_MODEL_ID;
 
 function createExistingConfigText(): string {
   return [
@@ -57,14 +60,18 @@ test("existing-config mutation succeeds through native props writes and preserve
 
     const result = await runInstallUseCase(
       {
-        model: CURATED_MODEL.key,
+        model: SELECTED_MODEL_ID,
       },
       harness.createDependencies(),
     );
 
     assert.equal(result.status, "success");
     assert.equal(result.path, "existing_config");
-    assert.equal(result.selectedModel?.modelId, CURATED_MODEL.modelId);
+    assert.equal(result.selectedModel?.id, SELECTED_MODEL_ID);
+    assert.deepEqual(result.liveCatalog?.modelIds, [
+      TEST_LIVE_MODEL_ID,
+      TEST_EXTRA_LIVE_MODEL_ID,
+    ]);
     assert.equal(result.configInspection?.status, "inspected");
 
     if (result.configInspection?.status === "inspected") {
@@ -98,10 +105,7 @@ test("existing-config mutation succeeds through native props writes and preserve
         `default_provider = "${ZEROCLAW_PROVIDER_KEY.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}"`,
       ),
     );
-    assert.match(
-      savedConfig,
-      /default_model = "qwen\/qwen3-235b-a22b-instruct-2507-fp8"/,
-    );
+    assert.match(savedConfig, /default_model = "live\/test-extra-model"/);
     assert.match(savedConfig, /api_key = ".+"/);
     assert.doesNotMatch(savedConfig, /gp-existing-config-secret/u);
 
@@ -125,13 +129,7 @@ test("existing-config mutation succeeds through native props writes and preserve
         "default-provider",
         ZEROCLAW_PROVIDER_KEY,
       ],
-      [
-        "props",
-        "set",
-        "--no-interactive",
-        "default-model",
-        CURATED_MODEL.modelId,
-      ],
+      ["props", "set", "--no-interactive", "default-model", SELECTED_MODEL_ID],
       ["props", "set", "api-key"],
     ]);
     assert.equal(executions[6]?.stdin ?? "", "");
@@ -178,7 +176,7 @@ test("runtime-ambiguous existing-config installs refuse before prompting or writ
           },
           async selectOption<TValue extends string>() {
             promptCalls += 1;
-            return CURATED_MODEL.key as TValue;
+            return TEST_LIVE_MODEL_ID as TValue;
           },
         },
       }),
@@ -226,7 +224,7 @@ test("runtime-active existing-config installs refuse before prompting or writing
           },
           async selectOption<TValue extends string>() {
             promptCalls += 1;
-            return CURATED_MODEL.key as TValue;
+            return TEST_LIVE_MODEL_ID as TValue;
           },
         },
       }),
@@ -293,7 +291,7 @@ test("live catalog auth failures block existing-config installs before model pro
           },
           async selectOption<TValue extends string>() {
             modelPromptCalls += 1;
-            return CURATED_MODEL.key as TValue;
+            return TEST_LIVE_MODEL_ID as TValue;
           },
         },
       }),
@@ -328,7 +326,7 @@ test("pre-secret failure restores prior non-secret fields before returning failu
               "set",
               "--no-interactive",
               "default-model",
-              CURATED_MODEL.modelId,
+              SELECTED_MODEL_ID,
             ],
             exitCode: 1,
             stderr: "default-model write failed",
@@ -346,7 +344,7 @@ test("pre-secret failure restores prior non-secret fields before returning failu
 
     const result = await runInstallUseCase(
       {
-        model: CURATED_MODEL.key,
+        model: SELECTED_MODEL_ID,
       },
       harness.createDependencies(),
     );
@@ -382,13 +380,7 @@ test("pre-secret failure restores prior non-secret fields before returning failu
         "default-provider",
         ZEROCLAW_PROVIDER_KEY,
       ],
-      [
-        "props",
-        "set",
-        "--no-interactive",
-        "default-model",
-        CURATED_MODEL.modelId,
-      ],
+      ["props", "set", "--no-interactive", "default-model", SELECTED_MODEL_ID],
       ["props", "set", "--no-interactive", "default-provider", "openrouter"],
       [
         "props",
@@ -428,7 +420,7 @@ test("post-secret failure restores prior non-secret fields and emits secret reme
 
     const result = await runInstallUseCase(
       {
-        model: CURATED_MODEL.key,
+        model: SELECTED_MODEL_ID,
       },
       harness.createDependencies(),
     );

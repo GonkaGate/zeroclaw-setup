@@ -9,7 +9,6 @@ import {
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MODEL_CATALOG } from "../../src/constants/models.js";
 import {
   createNodeInstallDependencies,
   type CreateNodeInstallDependenciesOverrides,
@@ -57,6 +56,9 @@ interface FakeZeroClawOptions {
 
 type HarnessDependencyOverrides = CreateNodeInstallDependenciesOverrides;
 
+export const TEST_LIVE_MODEL_ID = "live/test-default-model";
+export const TEST_EXTRA_LIVE_MODEL_ID = "live/test-extra-model";
+
 export interface FakeZeroClawInvocation {
   readonly args: string[];
   readonly stdin: string;
@@ -99,7 +101,10 @@ async function fetchSuccessfulModelCatalog() {
     status: 200,
     async json() {
       return {
-        data: MODEL_CATALOG.map((model) => ({ id: model.modelId })),
+        data: [
+          { id: TEST_LIVE_MODEL_ID, name: "Test Default Model" },
+          { id: TEST_EXTRA_LIVE_MODEL_ID },
+        ],
         object: "list",
       };
     },

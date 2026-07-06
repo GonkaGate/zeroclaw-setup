@@ -14,10 +14,10 @@ The shipped install path preserves the security posture from the PRD:
   native `zeroclaw props set api-key` path
 - install uses the entered `gp-...` key to make a pre-write
   `GET https://api.gonkagate.com/v1/models` request with Bearer auth, validates
-  the response shape, and refuses to continue unless every curated model is
-  present in the live catalog
-- live catalog entries outside the curated registry are ignored rather than
-  becoming selectable models
+  the response shape, dedupes model IDs, and refuses to continue when the live
+  catalog is empty or malformed
+- model prompts, `--model` validation, and config writes use only IDs returned
+  by the live catalog
 - first-run setup uses the proven two-step native path:
   `zeroclaw onboard --quick` for config/workspace initialization, then
   `zeroclaw props set api-key` for the secret
@@ -49,5 +49,5 @@ Current limitation:
   audited stable ZeroClaw `v0.6.9`
 - verify still exposes `api_key` as set/unset evidence only and keeps
   `zeroclaw doctor` advisory rather than verdict-defining
-- `/v1/models` proves API-key auth and live curated model visibility before
-  writes; it does not prove billing/quota for a later billable request
+- `/v1/models` proves API-key auth and live model visibility before writes; it
+  does not prove billing/quota for a later billable request

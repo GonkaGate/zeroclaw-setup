@@ -34,7 +34,7 @@ Current honest state:
     native `zeroclaw props set api-key`
   - split existing-config writes through `zeroclaw props`
   - pre-write GonkaGate `GET /v1/models` validation with Bearer auth, response
-    shape checks, and curated-model presence enforcement
+    shape checks, dynamic model selection, and empty-catalog refusal
   - refusal-oriented runtime-quiesce gating
   - non-secret restore and explicit post-secret remediation boundaries
 - verify now returns final `pass`, `warn-shadowed`, and `fail` verdicts, while
@@ -45,7 +45,7 @@ Current honest state:
   - regression coverage now pins audited-section preservation,
     runtime-quiesce refusal, and `api_key` set/unset-only inspection behavior
 
-If the package behavior, implementation status, supported model registry, or
+If the package behavior, implementation status, live model handling, or
 public command surface changes, this file must be updated immediately so it
 stays truthful.
 
@@ -65,9 +65,8 @@ The intended happy path is:
 1. user runs `npx zeroclaw-setup`
 2. installer validates local ZeroClaw availability
 3. installer collects a hidden GonkaGate API key
-4. installer verifies the live GonkaGate `/v1/models` catalog contains every
-   curated in-repo model
-5. installer offers a curated model picker
+4. installer fetches and validates the live GonkaGate `/v1/models` catalog
+5. installer offers a model picker backed only by the live catalog
 6. installer writes only the narrow ZeroClaw provider contract it owns
 7. user later runs `npx zeroclaw-setup verify` for a read-only check
 
@@ -84,11 +83,12 @@ These are product-level decisions, not small refactors.
 - GonkaGate base URL is fixed to `https://api.gonkagate.com/v1`
 - the ZeroClaw provider key is fixed to
   `custom:https://api.gonkagate.com/v1`
-- model choice comes only from a curated in-repo registry
-- install must require every curated model to be present in
-  `GET https://api.gonkagate.com/v1/models` before model selection or mutation
-- arbitrary live `/v1/models` entries must not become selectable unless they
-  are also added to the curated in-repo registry
+- model choice comes only from authenticated
+  `GET https://api.gonkagate.com/v1/models` results
+- install must fetch and validate the live model catalog after API-key intake
+  and before model selection or mutation
+- duplicate live model IDs are deduped; empty or malformed model catalogs block
+  setup before mutation
 - API key entry must remain interactive and hidden in the main UX
 - the wrapper should write ZeroClaw config, not shell env, shell rc files, or
   `.env` files
@@ -115,7 +115,8 @@ These are product-level decisions, not small refactors.
   evidence; `zeroclaw doctor` is advisory troubleshooting context, not the
   primary contract verdict source
 - install should stay interactive by default, but optional
-  `--model <curated-key>` is part of the shipped public surface
+  `--model <id>` is part of the shipped public surface and is validated against
+  the fetched live catalog
 - first-run mutation is shipped only when the API key can be collected through
   the hidden native `zeroclaw props set api-key` prompt; stdin-fed first-run
   secret transport remains blocked until explicitly re-proven
@@ -163,7 +164,7 @@ These are implementation facts today:
 - `src/install/managed-contract.ts` defines the exact ZeroClaw contract the
   installer owns
 - `src/install/first-run-proof.ts` records the shipped first-run proof:
-  `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+  `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
   followed by hidden native `zeroclaw props set api-key`, and first-run
   install remains blocked when secret input would bypass that native masked
   prompt path
@@ -187,15 +188,11 @@ These are implementation facts today:
   evidence only; literal secret read-back is not part of the shipped proof
 - `src/install/gonkagate-models.ts` owns the GonkaGate `/v1/models` trust
   boundary: canonical endpoint, Bearer auth, response-shape validation,
-  503 retry handling, and the requirement that all curated models are live
-- `src/constants/models.ts` contains the curated model registry
-- `src/cli.ts` exposes optional `--model <key>` for curated model selection;
+  503 retry handling, dedupe, and empty-catalog refusal
+- `src/cli.ts` exposes optional `--model <id>` for live model selection;
   when omitted, install remains interactive after the live catalog gate
-- the current curated registry intentionally contains these GonkaGate-supported
-  entries:
-  - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
-  - `kimi-k2.6` -> `moonshotai/Kimi-K2.6` (recommended default)
-  - `minimax-m2.7` -> `minimaxai/minimax-m2.7`
+- there is no checked-in runtime model allowlist; config writes use the
+  selected live model ID directly
 - a mirrored skill pack imported from `opencode-setup` is present under
   `.agents/skills/` and `.claude/skills/`
 - the repository already has CI, release-please, npm publish automation,
@@ -341,8 +338,8 @@ is an explicit reason to diverge.
 
 ### `test/`
 
-Contract and regression tests for package metadata, docs truthfulness, curated
-model registry, env override detection, fake-`zeroclaw` version gating,
+Contract and regression tests for package metadata, docs truthfulness, live
+model catalog handling, env override detection, fake-`zeroclaw` version gating,
 config resolution, `/v1/models` catalog validation, runtime-quiesce refusal,
 install mutation proof, and verify behavior.
 
@@ -402,7 +399,7 @@ Pause and double-check if a change touches:
 - secret handling
 - managed ZeroClaw config fields
 - env override behavior
-- the curated model registry
+- live model selection
 - install or verify UX
 - package name, bin name, or public `npx` flow
 

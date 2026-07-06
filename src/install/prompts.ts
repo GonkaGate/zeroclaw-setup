@@ -1,10 +1,5 @@
-import {
-  DEFAULT_MODEL_KEY,
-  MODEL_CATALOG,
-  resolveModelByKey,
-  type CuratedModel,
-} from "../constants/models.js";
 import type { InstallDependencies } from "./deps.js";
+import type { GonkaGateModelCatalogEntry } from "./gonkagate-models.js";
 
 export function looksLikeGonkaGateApiKey(value: string): boolean {
   return /^gp-[A-Za-z0-9_-]{8,}$/.test(value);
@@ -21,25 +16,33 @@ export function canPromptInteractively(
 
 export async function promptForInstallModel(
   dependencies: Pick<InstallDependencies, "prompts" | "runtime">,
-  initialModelKey?: string,
-): Promise<CuratedModel> {
+  models: readonly GonkaGateModelCatalogEntry[],
+  initialModelId?: string,
+): Promise<GonkaGateModelCatalogEntry> {
   if (!canPromptInteractively(dependencies)) {
     throw new Error(
       "Interactive install requires a TTY. Re-run in a terminal or pass --model.",
     );
   }
 
-  const modelKey = await dependencies.prompts.selectOption({
-    choices: MODEL_CATALOG.map((model) => ({
-      description: model.description,
-      label: model.recommended ? `${model.label} (recommended)` : model.label,
-      value: model.key,
+  const modelId = await dependencies.prompts.selectOption({
+    choices: models.map((model) => ({
+      description: model.name === undefined ? undefined : model.id,
+      label:
+        model.name === undefined ? model.id : `${model.name} (${model.id})`,
+      value: model.id,
     })),
-    defaultValue: initialModelKey ?? DEFAULT_MODEL_KEY,
-    message: "Choose a curated GonkaGate model",
+    defaultValue: initialModelId ?? models[0]?.id,
+    message: "Choose a GonkaGate model",
   });
 
-  return resolveModelByKey(modelKey);
+  const selectedModel = models.find((model) => model.id === modelId);
+
+  if (selectedModel === undefined) {
+    throw new Error(`Selected model "${modelId}" is not in the live catalog.`);
+  }
+
+  return selectedModel;
 }
 
 export async function promptForInstallApiKey(

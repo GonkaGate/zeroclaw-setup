@@ -15,7 +15,7 @@ This repository currently contains:
 This repository does not currently contain:
 
 - compatibility claims not backed by setup or verify checks
-- arbitrary custom model-id support
+- model-id support outside authenticated GonkaGate `/v1/models` results
 - arbitrary custom base URL support
 - shell profile or `.env` mutation
 - default online verify probing

@@ -4,43 +4,49 @@ import { createProgram } from "../src/cli.js";
 import { runInstallUseCase } from "../src/install/install-use-case.js";
 import { createInstallHarness } from "./install/harness.js";
 
-test("install CLI keeps the curated --model flag surface", () => {
+test("install CLI keeps the live --model flag surface", () => {
   const help = createProgram().helpInformation();
 
-  assert.match(help, /--model <key>/);
-  assert.match(help, /Curated GonkaGate model key/);
+  assert.match(help, /--model <id>/);
+  assert.match(help, /live \/v1\/models catalog/);
 });
 
-test("unsupported --model values fail before prompts or zeroclaw writes", async () => {
+test("unsupported --model values fail only after live catalog validation", async () => {
   const harness = await createInstallHarness();
-  let promptCalls = 0;
+  let secretPromptCalls = 0;
+  let modelPromptCalls = 0;
 
   try {
+    await harness.installFakeZeroClawOnPath();
+
     const dependencies = harness.createDependencies({
       prompts: {
         async readSecret() {
-          promptCalls += 1;
-          return "gp-should-not-be-used";
+          secretPromptCalls += 1;
+          return "gp-live-catalog-secret";
         },
         async selectOption<TValue extends string>() {
-          promptCalls += 1;
-          return "qwen3-235b" as TValue;
+          modelPromptCalls += 1;
+          return "live/test-default-model" as TValue;
         },
       },
     });
 
-    await assert.rejects(
-      () =>
-        runInstallUseCase(
-          {
-            model: "not-a-curated-model",
-          },
-          dependencies,
-        ),
-      /Unsupported model key/u,
+    const result = await runInstallUseCase(
+      {
+        model: "live/missing-model",
+      },
+      dependencies,
     );
-    assert.equal(promptCalls, 0);
-    assert.deepEqual(await harness.readFakeZeroClawInvocations(), []);
+
+    assert.equal(result.status, "blocked");
+    assert.match(result.reason, /Selected model "live\/missing-model"/);
+    assert.equal(secretPromptCalls, 1);
+    assert.equal(modelPromptCalls, 0);
+    assert.deepEqual(await harness.readFakeZeroClawInvocations(), [
+      ["--version"],
+      ["status", "--json"],
+    ]);
   } finally {
     await harness.cleanup();
   }

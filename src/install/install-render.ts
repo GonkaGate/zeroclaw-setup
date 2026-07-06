@@ -108,10 +108,7 @@ export function renderInstallResult(result: InstallResult): string {
   ];
 
   if (result.selectedModel !== undefined) {
-    lines.push(
-      `Selected curated model: ${result.selectedModel.key} -> ${result.selectedModel.modelId}`,
-      "",
-    );
+    lines.push(`Selected GonkaGate model: ${result.selectedModel.id}`, "");
   }
 
   if (result.liveCatalog !== undefined) {
@@ -119,7 +116,7 @@ export function renderInstallResult(result: InstallResult): string {
       "GonkaGate live model catalog:",
       `- Endpoint: ${result.liveCatalog.endpoint}`,
       `- Live model entries returned: ${result.liveCatalog.liveModelCount}`,
-      `- Curated models confirmed: ${result.liveCatalog.curatedModelIds.join(", ")}`,
+      `- Live model ids available: ${result.liveCatalog.modelIds.join(", ")}`,
       "",
     );
   }

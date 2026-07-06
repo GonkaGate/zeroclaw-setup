@@ -6,8 +6,7 @@ gating, runtime refusal, and truthful docs/tests.
 
 ## Module Map
 
-- `src/constants/` holds the fixed GonkaGate provider contract and curated
-  model registry
+- `src/constants/` holds the fixed GonkaGate provider contract
 - `src/install/deps.ts` provides command, prompt, HTTP, stdin,
   process-inspection, and runtime seams
 - `src/install/environment-overrides.ts` isolates provider-shadowing checks
@@ -19,7 +18,7 @@ gating, runtime refusal, and truthful docs/tests.
   and exposes the disposable proof evaluator used in tests
 - `src/install/first-run-install.ts` runs the proven first-run mutation path
 - `src/install/gonkagate-models.ts` owns the GonkaGate `GET /v1/models`
-  trust boundary and curated live-catalog requirement
+  trust boundary and live model catalog requirement
 - `src/install/runtime-quiesce.ts` implements the refusal-oriented runtime gate
 - `src/install/native-write.ts` owns the existing-config split native write
   sequence and non-secret restore boundaries
@@ -51,10 +50,10 @@ After that gate:
    hidden GonkaGate key used for live catalog validation
 5. install calls `GET https://api.gonkagate.com/v1/models` with Bearer auth,
    validates that the response is an object with a `data` array of model
-   objects containing non-empty string `id` fields, and requires every
-   curated in-repo model to be present
-6. install ignores arbitrary live catalog entries outside the curated registry
-   and prompts for a curated model only after the live gate passes
+   objects containing non-empty string `id` fields, dedupes duplicate IDs, and
+   fails cleanly on empty catalogs
+6. install prompts from the live catalog only, or uses the first live model in
+   non-interactive/default flows when `--model` is omitted
 
 The catalog key check happens before any ZeroClaw config mutation. On public
 native-prompt storage paths, the wrapper-collected key is used for the catalog
@@ -65,7 +64,7 @@ check only; ZeroClaw still collects the persisted `api-key` through
 
 The shipped first-run command tuple is:
 
-1. `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+1. `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
 2. `zeroclaw props set api-key`
 
 This keeps the secret off argv, avoids the full onboarding wizard, and leaves

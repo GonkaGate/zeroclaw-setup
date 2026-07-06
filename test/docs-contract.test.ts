@@ -66,13 +66,10 @@ test("PRD resolves the stable-target v1 direction explicitly", () => {
   assert.match(prd, /`v0\.7\.0-beta\.\*`/);
   assert.match(prd, /unknown top-level keys/i);
   assert.match(prd, /advisory/i);
-  assert.match(
-    prd,
-    /`qwen3-235b` -> `qwen\/qwen3-235b-a22b-instruct-2507-fp8`/,
-  );
-  assert.match(prd, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
-  assert.match(prd, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
-  assert.match(prd, /`--model <curated-key>`/);
+  assert.match(prd, /`--model <id>`/);
+  assert.match(prd, /model choice comes only from authenticated/i);
+  assert.match(prd, /no checked-in runtime model allowlist/i);
+  assert.match(prd, /first valid live model/i);
 });
 
 test("repo docs record the split write path and verify shadow behavior", () => {
@@ -108,11 +105,11 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   );
   assert.match(readme, /unknown top-level keys/i);
   assert.match(readme, /advisory/i);
-  assert.match(readme, /`--model <curated-key>`/);
-  assert.match(readme, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
-  assert.match(readme, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
+  assert.match(readme, /`--model <id>`/);
+  assert.match(readme, /live model IDs/i);
   assert.match(readme, /`GET https:\/\/api\.gonkagate\.com\/v1\/models`/);
-  assert.match(readme, /arbitrary live entries/i);
+  assert.match(readme, /empty or malformed live catalogs/i);
+  assert.match(readme, /selected live model ID/i);
   assert.match(readme, /set\/unset evidence only/i);
   assert.match(
     readme,
@@ -136,11 +133,10 @@ test("repo docs record the split write path and verify shadow behavior", () => {
   assert.match(agents, /saved-config inspection|saved config inspection/i);
   assert.match(agents, /unknown top-level keys/i);
   assert.match(agents, /advisory/i);
-  assert.match(agents, /`--model <curated-key>`/);
-  assert.match(agents, /`kimi-k2\.6` -> `moonshotai\/Kimi-K2\.6`/);
-  assert.match(agents, /`minimax-m2\.7` -> `minimaxai\/minimax-m2\.7`/);
+  assert.match(agents, /`--model <id>`/);
+  assert.match(agents, /live model selection/i);
   assert.match(agents, /GET https:\/\/api\.gonkagate\.com\/v1\/models/);
-  assert.match(agents, /arbitrary live .*entries/i);
+  assert.match(agents, /no checked-in runtime model allowlist/i);
   assert.match(agents, /onboard --quick/i);
   assert.match(
     agents,

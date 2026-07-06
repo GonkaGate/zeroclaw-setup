@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { getSupportedModelKeys } from "./constants/models.js";
 import {
   renderInstallResult,
   runInstallUseCase,
@@ -10,7 +9,6 @@ import {
 } from "./install/verify-use-case.js";
 
 export function createProgram(): Command {
-  const supportedModelKeys = getSupportedModelKeys().join(", ");
   const program = new Command();
 
   program
@@ -20,8 +18,8 @@ export function createProgram(): Command {
     )
     .showHelpAfterError()
     .option(
-      "-m, --model <key>",
-      `Curated GonkaGate model key (${supportedModelKeys})`,
+      "-m, --model <id>",
+      "GonkaGate model id from the live /v1/models catalog",
     )
     .action(async (options: { model?: string }) => {
       const result = await runInstallUseCase({ model: options.model });

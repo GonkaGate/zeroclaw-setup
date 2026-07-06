@@ -25,7 +25,7 @@ export interface EvaluateFirstRunCandidateRequest {
 }
 
 const FIRST_RUN_COMMAND_TUPLE = Object.freeze([
-  `zeroclaw onboard --quick --provider ${ZEROCLAW_PROVIDER_KEY} --model <curated-model-id>`,
+  `zeroclaw onboard --quick --provider ${ZEROCLAW_PROVIDER_KEY} --model <model-id>`,
   "zeroclaw props set api-key",
 ]);
 

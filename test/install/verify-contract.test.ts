@@ -4,12 +4,12 @@ import { ZEROCLAW_PROVIDER_KEY } from "../../src/constants/gateway.js";
 import { runVerifyUseCase } from "../../src/install/verify-use-case.js";
 import { createInstallHarness } from "./harness.js";
 
-const CURATED_MODEL_ID = "qwen/qwen3-235b-a22b-instruct-2507-fp8";
+const TEST_SAVED_MODEL_ID = "live/saved-model";
 
 function createManagedConfig(apiKey = "gp-saved-secret"): string {
   return [
     `default_provider = "${ZEROCLAW_PROVIDER_KEY}"`,
-    `default_model = "${CURATED_MODEL_ID}"`,
+    `default_model = "${TEST_SAVED_MODEL_ID}"`,
     `api_key = "${apiKey}"`,
   ].join("\n");
 }
@@ -115,7 +115,7 @@ test("verify fails when zeroclaw status resolves a different config path", async
           json: {
             config: harness.createPath("wrong/config.toml"),
             gateway: { running: false },
-            model: CURATED_MODEL_ID,
+            model: TEST_SAVED_MODEL_ID,
             provider: ZEROCLAW_PROVIDER_KEY,
             service: { status: "inactive" },
             workspace: harness.createPath("wrong/workspace"),
