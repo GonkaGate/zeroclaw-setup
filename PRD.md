@@ -79,7 +79,7 @@ The caveat is also real because:
 
 - Building a generic ZeroClaw provider configurator
 - Supporting arbitrary custom base URLs in the public GonkaGate flow
-- Supporting free-form model input in v1
+- Supporting model input that is not present in GonkaGate `/v1/models`
 - Replacing `zeroclaw onboard` as ZeroClaw's general setup path
 - Rewriting channel, memory, hook, tunnel, or workspace setup
 - Owning ZeroClaw installation
@@ -92,7 +92,7 @@ A developer who already has local ZeroClaw, wants to use GonkaGate as the primar
 
 ## User Stories
 
-1. As a new ZeroClaw user, I can run one command, enter my GonkaGate API key, choose a curated model, and end up with a working GonkaGate-backed ZeroClaw setup.
+1. As a new ZeroClaw user, I can run one command, enter my GonkaGate API key, choose a live GonkaGate model, and end up with a working GonkaGate-backed ZeroClaw setup.
 2. As an existing ZeroClaw user, I can switch only the AI provider settings to GonkaGate without losing channels, tunnel, memory, hooks, or other unrelated settings.
 3. As a cautious user, I can run a separate read-only verify command later to confirm that the active config still points at GonkaGate and that ZeroClaw is loading it.
 
@@ -109,18 +109,18 @@ npx zeroclaw-setup
 Happy-path prompts in v1:
 
 - hidden prompt for a GonkaGate API key
-- curated model picker
+- live GonkaGate model picker
 
 After the hidden key prompt, install should call
 `GET https://api.gonkagate.com/v1/models` with Bearer auth, validate the
-response shape before trusting it, and continue to model selection only when
-every curated in-repo model is present in the live catalog.
+response shape before trusting it, dedupe returned model IDs, and continue to
+model selection only when at least one valid live model is available.
 
 Things the user should not be asked:
 
 - custom provider type
 - custom base URL
-- custom model ID
+- custom model ID outside the live GonkaGate catalog
 - config path
 - workspace path, unless ZeroClaw itself requires that as part of its normal onboarding
 
@@ -151,10 +151,10 @@ It is "the easiest GonkaGate setup path for ZeroClaw users, built on top of Zero
 
 - GonkaGate base URL is fixed to `https://api.gonkagate.com/v1`
 - provider choice is fixed by product design
-- model choice comes only from a code-owned curated registry
-- live GonkaGate catalog validation uses only
-  `GET https://api.gonkagate.com/v1/models`; arbitrary live entries are not
-  selectable unless they are also in the code-owned curated registry
+- model choice comes only from authenticated
+  `GET https://api.gonkagate.com/v1/models` results
+- live GonkaGate catalog validation rejects malformed or empty responses and
+  dedupes duplicate IDs before selection
 - API key entry remains interactive and hidden
 - the wrapper writes ZeroClaw config, not shell env and not shell rc files
 
@@ -243,28 +243,27 @@ The wrapper should avoid writing in v1:
 
 ## Model Strategy
 
-v1 model selection should be curated, not free-form.
+v1 model selection should be live-catalog driven, not backed by a checked-in
+allowlist.
 
 Rules:
 
-- the picker should expose only GonkaGate-supported models
-- v1 should ship exact curated entries:
-  - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
-  - `kimi-k2.6` -> `moonshotai/Kimi-K2.6`
-  - `minimax-m2.7` -> `minimaxai/minimax-m2.7`
-- `kimi-k2.6` is the recommended default
-- optional `--model <curated-key>` should be part of v1, but only for curated
-  keys
-- when `--model` is omitted, install should keep the interactive curated picker
+- the picker should expose every valid model ID returned by GonkaGate
+  `/v1/models`
+- optional `--model <id>` should be part of v1, but only when that ID is
+  present in the fetched live catalog
+- when `--model` is omitted in an interactive terminal, install should keep a
+  live model picker
+- when `--model` is omitted in a non-interactive/default flow, install should
+  use the first valid live model returned by `/v1/models`
 - before model selection or config mutation, install should use the entered
   `gp-...` key to fetch `GET /v1/models`, validate an object response with a
   `data` array of model objects containing non-empty string `id` fields, and
-  require all curated model IDs to be present
-- live catalog entries outside the curated registry should be ignored, not
-  surfaced as ad hoc selectable models
-- adding more curated entries later requires explicit docs, test, and
-  release-note updates
-- arbitrary model IDs should not be part of the public happy path
+  fail cleanly on malformed or empty responses
+- duplicate live IDs should be deduped before picker/default selection
+- removed network models should not fail setup unless the user explicitly
+  selects one through `--model` and it is absent from the live response
+- no checked-in GonkaGate model registry is required for runtime behavior
 
 ## Implementation Strategy
 
@@ -283,7 +282,7 @@ Recommended strategy: hybrid
 
 - GonkaGate-specific prompts
 - the GonkaGate `/v1/models` live catalog trust boundary
-- curated model registry
+- live model selection
 - the GonkaGate managed config contract
 - environment-override checks relevant to GonkaGate correctness
 - the public install and verify UX
@@ -365,7 +364,8 @@ Separate verification is viable and worthwhile.
 - the active config/workspace path resolved by ZeroClaw
 - GonkaGate-managed provider fields are present and correct
 - the saved provider is `custom:https://api.gonkagate.com/v1`
-- the saved model is from the curated registry
+- the saved model is set, acknowledging that install proves live availability
+  at write time through `/v1/models`
 - the saved API key field is present, acknowledging that stable ZeroClaw CLI exposes secret fields as set/unset status rather than raw values
 - risky environment overrides are absent or surfaced clearly
 - `zeroclaw status` reports the expected active runtime config and
@@ -570,7 +570,7 @@ Custom providers use dynamic keys like `custom:https://api.gonkagate.com/v1`. Th
 A v1 launch is successful when:
 
 - a new user can reach GonkaGate-backed ZeroClaw with one public command
-- the happy path asks only for API key and curated model
+- the happy path asks only for API key and live GonkaGate model
 - existing users can switch provider settings without losing unrelated config
 - the product has a separate read-only verify command
 - the wrapper's docs stay truthful to the actual managed config contract
@@ -578,7 +578,7 @@ A v1 launch is successful when:
 ## Out Of Scope For v1
 
 - arbitrary custom provider setup
-- arbitrary model entry
+- arbitrary model entry outside the fetched live catalog
 - model routing setup beyond the primary selected model
 - migration of existing OpenAI or OpenRouter routes into GonkaGate-specific routing
 - project-local scope
@@ -597,16 +597,13 @@ A v1 launch is successful when:
 1. `default-provider` and `default-model` may use stable `zeroclaw props set --no-interactive`, but `api-key` must not be passed through argv-based `--no-interactive`; it requires a hidden native secret-input seam such as `zeroclaw props set api-key`.
 2. Existing-config updates must run as a runtime-quiesced best-effort ordered write. Stable `v0.6.9` does not expose an atomic multi-field provider update seam, and stable native secret reads do not expose the prior `api_key` value, so automatic restore is limited to the non-secret fields.
 3. `verify` should not hard-fail generically on provider env overrides. It should report an explicit `warn-shadowed` state with the message `saved config is correct but inactive`.
-4. The exact v1 curated model list contains `qwen3-235b` ->
-   `qwen/qwen3-235b-a22b-instruct-2507-fp8`, `kimi-k2.6` ->
-   `moonshotai/Kimi-K2.6`, and `minimax-m2.7` ->
-   `minimaxai/minimax-m2.7`, with `kimi-k2.6` kept as the recommended
-   default.
-5. v1 should support optional `--model <curated-key>` while keeping the default install UX interactive when the flag is omitted.
+4. v1 model selection is driven by authenticated GonkaGate `/v1/models`
+   responses, with no checked-in runtime model allowlist.
+5. v1 should support optional `--model <id>` while keeping the default install UX interactive when the flag is omitted.
 6. v1 install should validate GonkaGate `GET /v1/models` before model
    selection and before any ZeroClaw config mutation. The check proves auth and
-   live curated model visibility only; it does not broaden model selection or
-   prove later billable-request readiness.
+   live model visibility only; it does not prove later billable-request
+   readiness.
 
 ## Bounded Implementation Proof
 
@@ -621,8 +618,8 @@ all of the following in disposable ZeroClaw workspaces:
 6. first-run setup uses a stable native seam that preserves the GonkaGate one-command UX without forcing the full interactive `zeroclaw onboard` wizard and without passing the secret on argv
 7. verify can resolve the active config path using stable source-level precedence and `ZEROCLAW_WORKSPACE` layout branching, classify env-shadowed runtime state without mutating anything, and keep `zeroclaw doctor` output advisory rather than verdict-defining
 8. the live catalog boundary calls the canonical `/v1/models` endpoint with
-   Bearer auth, rejects malformed responses, rejects catalogs missing curated
-   models, and blocks before native writes when the check fails
+   Bearer auth, rejects malformed or empty responses, dedupes valid IDs, and
+   blocks before native writes when the check fails
 
 ## Compatibility Gate
 

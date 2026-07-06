@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  MODEL_CATALOG,
-  resolveModelByKey,
-} from "../../src/constants/models.js";
-import {
-  fetchCuratedGonkaGateModelCatalog,
+  fetchGonkaGateModelCatalog,
   GONKAGATE_MODELS_ENDPOINT,
   GonkaGateModelsError,
   requireModelInGonkaGateCatalog,
@@ -15,21 +11,26 @@ function createSuccessfulCatalogBody() {
   return {
     data: [
       {
-        id: "unsupported/live-model",
+        id: "live/unknown-a",
+        name: "Unknown A",
       },
-      ...MODEL_CATALOG.map((model) => ({
-        id: model.modelId,
-      })),
+      {
+        id: "live/unknown-b",
+      },
+      {
+        id: "live/unknown-a",
+        name: "Duplicate ignored",
+      },
     ],
     object: "list",
   };
 }
 
-test("fetchCuratedGonkaGateModelCatalog uses the canonical /v1/models endpoint with Bearer auth", async () => {
+test("fetchGonkaGateModelCatalog uses the canonical /v1/models endpoint with Bearer auth", async () => {
   let capturedUrl: string | undefined;
   let capturedAuthorization: string | undefined;
 
-  const catalog = await fetchCuratedGonkaGateModelCatalog("gp-test-catalog", {
+  const catalog = await fetchGonkaGateModelCatalog("gp-test-catalog", {
     async fetchImpl(url, init) {
       capturedUrl = url;
       capturedAuthorization = init.headers.Authorization;
@@ -47,17 +48,22 @@ test("fetchCuratedGonkaGateModelCatalog uses the canonical /v1/models endpoint w
   assert.equal(capturedUrl, "https://api.gonkagate.com/v1/models");
   assert.equal(capturedUrl, GONKAGATE_MODELS_ENDPOINT);
   assert.equal(capturedAuthorization, "Bearer gp-test-catalog");
-  assert.deepEqual(
-    catalog.curatedModels.map((model) => model.key),
-    MODEL_CATALOG.map((model) => model.key),
-  );
-  assert.equal(catalog.liveModelCount, MODEL_CATALOG.length + 1);
+  assert.deepEqual(catalog.models, [
+    {
+      id: "live/unknown-a",
+      name: "Unknown A",
+    },
+    {
+      id: "live/unknown-b",
+    },
+  ]);
+  assert.equal(catalog.liveModelCount, 2);
 });
 
-test("fetchCuratedGonkaGateModelCatalog retries temporary catalog unavailability", async () => {
+test("fetchGonkaGateModelCatalog retries temporary catalog unavailability", async () => {
   let calls = 0;
 
-  const catalog = await fetchCuratedGonkaGateModelCatalog("gp-test-catalog", {
+  const catalog = await fetchGonkaGateModelCatalog("gp-test-catalog", {
     async fetchImpl() {
       calls += 1;
 
@@ -83,14 +89,14 @@ test("fetchCuratedGonkaGateModelCatalog retries temporary catalog unavailability
 
   assert.equal(calls, 2);
   assert.deepEqual(
-    catalog.curatedModels.map((model) => model.modelId),
-    MODEL_CATALOG.map((model) => model.modelId),
+    catalog.models.map((model) => model.id),
+    ["live/unknown-a", "live/unknown-b"],
   );
 });
 
-test("fetchCuratedGonkaGateModelCatalog rejects auth failures", async () => {
+test("fetchGonkaGateModelCatalog rejects auth failures", async () => {
   await assert.rejects(
-    fetchCuratedGonkaGateModelCatalog("gp-bad-catalog", {
+    fetchGonkaGateModelCatalog("gp-bad-catalog", {
       async fetchImpl() {
         return {
           status: 401,
@@ -114,9 +120,9 @@ test("fetchCuratedGonkaGateModelCatalog rejects auth failures", async () => {
   );
 });
 
-test("fetchCuratedGonkaGateModelCatalog rejects malformed response shapes", async () => {
+test("fetchGonkaGateModelCatalog rejects malformed response shapes", async () => {
   await assert.rejects(
-    fetchCuratedGonkaGateModelCatalog("gp-test-catalog", {
+    fetchGonkaGateModelCatalog("gp-test-catalog", {
       async fetchImpl() {
         return {
           status: 200,
@@ -142,19 +148,15 @@ test("fetchCuratedGonkaGateModelCatalog rejects malformed response shapes", asyn
   );
 });
 
-test("fetchCuratedGonkaGateModelCatalog rejects catalogs missing curated models", async () => {
+test("fetchGonkaGateModelCatalog rejects empty catalogs", async () => {
   await assert.rejects(
-    fetchCuratedGonkaGateModelCatalog("gp-test-catalog", {
+    fetchGonkaGateModelCatalog("gp-test-catalog", {
       async fetchImpl() {
         return {
           status: 200,
           async json() {
             return {
-              data: [
-                {
-                  id: resolveModelByKey("qwen3-235b").modelId,
-                },
-              ],
+              data: [],
             };
           },
         };
@@ -163,16 +165,14 @@ test("fetchCuratedGonkaGateModelCatalog rejects catalogs missing curated models"
     }),
     (error) => {
       assert.ok(error instanceof GonkaGateModelsError);
-      assert.equal(error.kind, "missing_supported_models");
-      assert.match(error.message, /moonshotai\/Kimi-K2\.6/);
-      assert.match(error.message, /minimaxai\/minimax-m2\.7/);
+      assert.equal(error.kind, "empty_catalog");
       return true;
     },
   );
 });
 
-test("requireModelInGonkaGateCatalog keeps selection inside the curated live catalog", async () => {
-  const catalog = await fetchCuratedGonkaGateModelCatalog("gp-test-catalog", {
+test("requireModelInGonkaGateCatalog validates explicit selections against live ids", async () => {
+  const catalog = await fetchGonkaGateModelCatalog("gp-test-catalog", {
     async fetchImpl() {
       return {
         status: 200,
@@ -184,7 +184,11 @@ test("requireModelInGonkaGateCatalog keeps selection inside the curated live cat
     maxAttempts: 1,
   });
 
-  assert.doesNotThrow(() =>
-    requireModelInGonkaGateCatalog(resolveModelByKey("kimi-k2.6"), catalog),
+  assert.deepEqual(requireModelInGonkaGateCatalog("live/unknown-b", catalog), {
+    id: "live/unknown-b",
+  });
+  assert.throws(
+    () => requireModelInGonkaGateCatalog("live/removed", catalog),
+    /Selected model "live\/removed"/,
   );
 });

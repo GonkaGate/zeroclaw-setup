@@ -39,7 +39,7 @@ Current status:
 - install now performs real Phase 2 mutation work on audited ZeroClaw
   `v0.6.9`
 - first-run setup uses a proven two-step native path:
-  `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+  `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
   followed by the hidden native `zeroclaw props set api-key` prompt
 - first-run mutation stays intentionally limited to that hidden native prompt
   path; stdin-fed secret transport remains blocked because it is not part of
@@ -50,10 +50,10 @@ Current status:
   native `zeroclaw props set api-key` path
 - after hidden GonkaGate key entry, install calls
   `GET https://api.gonkagate.com/v1/models`, validates the response shape, and
-  requires every in-repo curated model to be present before any model prompt or
+  uses the returned live model IDs for model prompts, `--model` validation, and
   ZeroClaw config mutation
-- live catalog entries outside the curated registry are never exposed as
-  selectable models
+- empty or malformed live model catalogs block setup before any ZeroClaw config
+  mutation
 - install refuses mutation when the runtime is active or ambiguous, when the
   config contains unknown top-level keys, or when the installed ZeroClaw
   runtime is missing, unparseable, or older than `v0.6.9`
@@ -92,7 +92,7 @@ Development entrypoints:
 - mirrored `.agents` and `.claude` skill packs copied from `opencode-setup`
 - starter docs under `docs/`
 - node:test coverage for version gating, config resolution, first-run proof,
-  native write sequencing, restore boundaries, model catalog, docs, and
+  native write sequencing, restore boundaries, live model catalog, docs, and
   package metadata
 
 ## Repository Layout
@@ -101,7 +101,7 @@ Development entrypoints:
 bin/                    packaged CLI entrypoint
 docs/                   docs, security notes, implementation plan, specs mirror
 scripts/                repository utility scripts
-src/constants/          fixed provider and model registry data
+src/constants/          fixed provider data
 src/install/            install and verify runtime seams
 test/                   fast node:test coverage for install, verify, and repo contracts
 .agents/skills/         mirrored local skill pack for agent workflows
@@ -119,13 +119,13 @@ The code hard-codes the GonkaGate contract from the PRD:
   - `api_key`
   - `default_model`
 - shipped first-run path:
-  - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+  - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
   - hidden native `zeroclaw props set api-key`
   - first-run mutation stays blocked when the API key would need stdin or
     another unproven transport
 - shipped existing-config path:
   - `zeroclaw props set --no-interactive default-provider custom:https://api.gonkagate.com/v1`
-  - `zeroclaw props set --no-interactive default-model <curated-model-id>`
+  - `zeroclaw props set --no-interactive default-model <model-id>`
   - hidden native `zeroclaw props set api-key`
   - runtime-quiesced sequencing with non-secret restore after pre-secret and
     post-secret failures
@@ -139,21 +139,17 @@ The code hard-codes the GonkaGate contract from the PRD:
 - shipped verify evidence split:
   - `zeroclaw status` informs the effective runtime verdict
   - `zeroclaw doctor` remains advisory troubleshooting context
-- curated model catalog:
-  - `qwen3-235b` -> `qwen/qwen3-235b-a22b-instruct-2507-fp8`
-  - `kimi-k2.6` -> `moonshotai/Kimi-K2.6` (recommended default)
-  - `minimax-m2.7` -> `minimaxai/minimax-m2.7`
 - live model catalog gate:
   - endpoint: `GET https://api.gonkagate.com/v1/models`
   - auth: `Authorization: Bearer <gp-...>`
   - response trust boundary: root object with a `data` array of objects whose
-    `id` fields are non-empty strings
-  - install requires all curated model IDs to be present before model
+    `id` fields are non-empty strings and optional string `name` fields
+  - duplicate live model IDs are deduped
+  - install fails cleanly on empty or malformed live catalogs before model
     selection or native writes
-  - arbitrary live entries are ignored unless they are also in the curated
-    registry
+  - the selected live model ID is written directly to `default_model`
 - public install flag surface:
-  - optional `--model <curated-key>`
+  - optional `--model <id>` validated against the fetched live catalog
 - env override checks:
   - `ZEROCLAW_PROVIDER`
   - `ZEROCLAW_MODEL_PROVIDER`
@@ -183,8 +179,10 @@ Current shipped behavior:
   passes
 - install asks for a hidden GonkaGate API key after the chosen mutation path is
   known and the runtime quiesce gate has passed, checks the live
-  `GET /v1/models` catalog, then prompts for a curated model when `--model` is
-  omitted
+  `GET /v1/models` catalog, then prompts for a live model when `--model` is
+  omitted in an interactive terminal
+- non-interactive/default installs without `--model` use the first valid live
+  model returned by `/v1/models`
 - the wrapper-collected key is used for the live catalog check; public native
   storage paths still let ZeroClaw collect the persisted `api-key` through
   `zeroclaw props set api-key`, so first-run stdin secret persistence remains

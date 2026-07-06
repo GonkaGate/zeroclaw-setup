@@ -13,7 +13,7 @@ current truth.
    - source-audited config resolution plus saved-config inspection
    - audited top-level preflight and unknown-key refusal
 2. Landed Phase 2 install mutation:
-   - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+   - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
    - `zeroclaw props set api-key`
    - split native existing-config writes through `zeroclaw props`
 3. Landed Phase 3 read-only verify verdicts:
@@ -35,7 +35,7 @@ current truth.
 ## Historical Notes
 
 - the current shipped install path remains:
-  - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id>`
+  - `zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id>`
   - `zeroclaw props set api-key`
 - the current shipped existing-config path remains:
   - `default-provider` and `default-model` through

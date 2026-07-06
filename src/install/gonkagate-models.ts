@@ -1,6 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { GONKAGATE_BASE_URL } from "../constants/gateway.js";
-import { MODEL_CATALOG, type CuratedModel } from "../constants/models.js";
 import type { InstallHttpClient, InstallHttpResponse } from "./deps.js";
 
 export const GONKAGATE_MODELS_ENDPOINT = `${GONKAGATE_BASE_URL.replace(/\/$/, "")}/models`;
@@ -12,10 +11,9 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 export type GonkaGateModelsFailureKind =
   | "authentication_failed"
   | "catalog_unavailable"
+  | "empty_catalog"
   | "invalid_response"
   | "missing_selected_model"
-  | "missing_supported_models"
-  | "no_supported_models"
   | "request_failed";
 
 export interface FetchGonkaGateModelsOptions {
@@ -27,15 +25,12 @@ export interface FetchGonkaGateModelsOptions {
 
 export interface GonkaGateModelCatalogEntry {
   readonly id: string;
+  readonly name?: string;
 }
 
-export interface CuratedGonkaGateModelCatalog {
-  readonly curatedModels: readonly CuratedModel[];
+export interface GonkaGateModelCatalog {
   readonly endpoint: string;
   readonly liveModelCount: number;
-}
-
-interface GonkaGateModelCatalog {
   readonly models: readonly GonkaGateModelCatalogEntry[];
 }
 
@@ -65,68 +60,9 @@ export class GonkaGateModelsError<
   }
 }
 
-export async function fetchCuratedGonkaGateModelCatalog(
+export async function fetchGonkaGateModelCatalog(
   apiKey: string,
   options: FetchGonkaGateModelsOptions = {},
-): Promise<CuratedGonkaGateModelCatalog> {
-  const catalog = await fetchGonkaGateModelCatalog(apiKey, options);
-  const curatedModels = createCuratedGonkaGateModelCatalog(catalog.models);
-  const curatedModelIds = new Set(curatedModels.map((model) => model.modelId));
-  const missingSupportedModels = MODEL_CATALOG.filter(
-    (model) => !curatedModelIds.has(model.modelId),
-  );
-
-  if (curatedModels.length === 0) {
-    throw new GonkaGateModelsError({
-      expected: MODEL_CATALOG.map((model) => model.modelId).join(", "),
-      kind: "no_supported_models",
-      message:
-        `GonkaGate ${GONKAGATE_MODELS_ENDPOINT} did not return any curated supported models. ` +
-        `Expected at least one of: ${MODEL_CATALOG.map((model) => model.modelId).join(", ")}.`,
-    });
-  }
-
-  if (missingSupportedModels.length > 0) {
-    throw new GonkaGateModelsError({
-      actual: catalog.models.map((model) => model.id).join(", "),
-      expected: MODEL_CATALOG.map((model) => model.modelId).join(", "),
-      kind: "missing_supported_models",
-      message:
-        `GonkaGate ${GONKAGATE_MODELS_ENDPOINT} did not return every curated supported model. ` +
-        `Missing: ${missingSupportedModels.map((model) => model.modelId).join(", ")}.`,
-    });
-  }
-
-  return {
-    curatedModels,
-    endpoint: GONKAGATE_MODELS_ENDPOINT,
-    liveModelCount: catalog.models.length,
-  };
-}
-
-export function requireModelInGonkaGateCatalog(
-  selectedModel: CuratedModel,
-  catalog: CuratedGonkaGateModelCatalog,
-): void {
-  if (catalog.curatedModels.some((model) => model.key === selectedModel.key)) {
-    return;
-  }
-
-  throw new GonkaGateModelsError({
-    actual: selectedModel.modelId,
-    expected: catalog.curatedModels.length
-      ? catalog.curatedModels.map((model) => model.modelId).join(", ")
-      : MODEL_CATALOG.map((model) => model.modelId).join(", "),
-    kind: "missing_selected_model",
-    message:
-      `Selected curated model "${selectedModel.key}" (${selectedModel.modelId}) was not returned by ` +
-      `GonkaGate ${GONKAGATE_MODELS_ENDPOINT}. Choose a currently available curated model and rerun the installer.`,
-  });
-}
-
-async function fetchGonkaGateModelCatalog(
-  apiKey: string,
-  options: FetchGonkaGateModelsOptions,
 ): Promise<GonkaGateModelCatalog> {
   const fetchImpl = options.fetchImpl ?? fetchGonkaGateModels;
   const maxAttempts = Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
@@ -193,7 +129,20 @@ async function fetchGonkaGateModelCatalog(
       });
     }
 
-    return parseGonkaGateModelCatalog(await readJsonResponse(response));
+    const models = parseGonkaGateModelCatalog(await readJsonResponse(response));
+
+    if (models.length === 0) {
+      throw new GonkaGateModelsError({
+        kind: "empty_catalog",
+        message: `GonkaGate ${GONKAGATE_MODELS_ENDPOINT} did not return any model ids.`,
+      });
+    }
+
+    return {
+      endpoint: GONKAGATE_MODELS_ENDPOINT,
+      liveModelCount: models.length,
+      models,
+    };
   }
 
   throw (
@@ -203,6 +152,26 @@ async function fetchGonkaGateModelCatalog(
       message: `Unable to fetch GonkaGate models from ${GONKAGATE_MODELS_ENDPOINT}.`,
     })
   );
+}
+
+export function requireModelInGonkaGateCatalog(
+  modelId: string,
+  catalog: GonkaGateModelCatalog,
+): GonkaGateModelCatalogEntry {
+  const model = catalog.models.find((candidate) => candidate.id === modelId);
+
+  if (model !== undefined) {
+    return model;
+  }
+
+  throw new GonkaGateModelsError({
+    actual: modelId,
+    expected: catalog.models.map((candidate) => candidate.id).join(", "),
+    kind: "missing_selected_model",
+    message:
+      `Selected model "${modelId}" was not returned by GonkaGate ${GONKAGATE_MODELS_ENDPOINT}. ` +
+      "Choose a currently available model and rerun the installer.",
+  });
 }
 
 async function fetchGonkaGateModels(
@@ -229,7 +198,9 @@ async function readJsonResponse(
   }
 }
 
-function parseGonkaGateModelCatalog(value: unknown): GonkaGateModelCatalog {
+function parseGonkaGateModelCatalog(
+  value: unknown,
+): readonly GonkaGateModelCatalogEntry[] {
   const root = asPlainObject(value);
 
   if (!root) {
@@ -240,11 +211,9 @@ function parseGonkaGateModelCatalog(value: unknown): GonkaGateModelCatalog {
     throw invalidCatalogResponse("data", "array", root.data);
   }
 
-  return {
-    models: root.data.map((entry, index) =>
-      parseGonkaGateModelEntry(entry, index),
-    ),
-  };
+  return dedupeModels(
+    root.data.map((entry, index) => parseGonkaGateModelEntry(entry, index)),
+  );
 }
 
 function parseGonkaGateModelEntry(
@@ -266,17 +235,27 @@ function parseGonkaGateModelEntry(
     );
   }
 
-  return {
-    id: raw.id.trim(),
-  };
+  const id = raw.id.trim();
+  const name =
+    typeof raw.name === "string" && raw.name.trim().length > 0
+      ? raw.name.trim()
+      : undefined;
+
+  return name === undefined ? { id } : { id, name };
 }
 
-function createCuratedGonkaGateModelCatalog(
-  liveModels: readonly GonkaGateModelCatalogEntry[],
-): CuratedModel[] {
-  const liveById = new Set(liveModels.map((model) => model.id));
+function dedupeModels(
+  models: readonly GonkaGateModelCatalogEntry[],
+): readonly GonkaGateModelCatalogEntry[] {
+  const byId = new Map<string, GonkaGateModelCatalogEntry>();
 
-  return MODEL_CATALOG.filter((model) => liveById.has(model.modelId));
+  for (const model of models) {
+    if (!byId.has(model.id)) {
+      byId.set(model.id, model);
+    }
+  }
+
+  return [...byId.values()];
 }
 
 function invalidCatalogResponse(

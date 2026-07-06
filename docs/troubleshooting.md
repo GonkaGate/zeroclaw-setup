@@ -45,8 +45,8 @@ npm run typecheck
 - the runtime-quiesce gate reports no active or ambiguous ZeroClaw runtime
 - the entered `gp-...` key can call GonkaGate
   `GET https://api.gonkagate.com/v1/models`
-- the live catalog response has the expected `data[].id` shape and contains
-  every curated in-repo model
+- the live catalog response has the expected `data[].id` shape and contains at
+  least one valid model ID
 - the chosen path can use the shipped native seams
 - first-run setup can use the hidden native `zeroclaw props set api-key`
   prompt; unproven stdin-fed first-run secret transport stays blocked
@@ -58,10 +58,10 @@ Common install blockers:
 - active or ambiguous runtime state from `zeroclaw status --json` or local
   process inspection
 - GonkaGate `/v1/models` auth failure, temporary catalog unavailability,
-  malformed catalog payloads, or a live catalog missing a curated model
-- non-interactive terminal state without `--model`, or without access to the
-  hidden native `zeroclaw props set api-key` prompt that the shipped first-run
-  proof requires
+  malformed catalog payloads, empty catalogs, or an explicit `--model` value
+  absent from the live response
+- no access to the hidden native `zeroclaw props set api-key` prompt that the
+  shipped first-run proof requires
 
 If install reports runtime activity, stop ZeroClaw gateway/daemon processes and
 rerun the installer. The wrapper intentionally refuses background mutation in
@@ -73,8 +73,7 @@ the prior `api-key` value for automatic recovery.
 
 If install reports a GonkaGate `/v1/models` failure, no ZeroClaw config write
 has started yet. Check the API key, wait and retry if the catalog is
-temporarily unavailable, or update the curated registry only after confirming
-the product contract should change.
+temporarily unavailable, or pick a model ID returned by the live response.
 
 ## Current Verify Behavior
 

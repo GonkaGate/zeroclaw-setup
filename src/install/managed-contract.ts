@@ -18,7 +18,7 @@ const MANAGED_FIELD_DATA = [
   {
     configKey: "default_model",
     propPath: "default-model",
-    description: "Persist the selected curated GonkaGate model id.",
+    description: "Persist the selected live GonkaGate model id.",
   },
 ] as const satisfies readonly ManagedConfigField[];
 

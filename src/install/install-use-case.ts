@@ -25,8 +25,9 @@ import { getProviderEnvOverrides } from "./environment-overrides.js";
 import { runFirstRunInstall } from "./first-run-install.js";
 import { getShippedFirstRunProof } from "./first-run-proof.js";
 import {
-  fetchCuratedGonkaGateModelCatalog,
-  type CuratedGonkaGateModelCatalog,
+  fetchGonkaGateModelCatalog,
+  type GonkaGateModelCatalog,
+  type GonkaGateModelCatalogEntry,
   type GonkaGateModelsError,
   requireModelInGonkaGateCatalog,
 } from "./gonkagate-models.js";
@@ -43,7 +44,6 @@ import {
   detectZeroClaw,
   renderZeroClawSupportSummary,
 } from "./zeroclaw-command.js";
-import { resolveModelByKey, type CuratedModel } from "../constants/models.js";
 import { renderInstallResult } from "./install-render.js";
 
 export interface InstallOptions {
@@ -74,7 +74,7 @@ function createUnsupportedVersionPreflight(): ConfigMutationPreflight {
 function createInstallContextResultBase(
   context: InstallContext,
   path: InstallPath,
-  selectedModel?: CuratedModel,
+  selectedModel?: GonkaGateModelCatalogEntry,
   liveCatalog?: GonkaGateLiveCatalogSummary,
 ) {
   return {
@@ -94,7 +94,7 @@ function createBlockedResult(
   context: InstallContext,
   path: InstallPath,
   reason: string,
-  selectedModel?: CuratedModel,
+  selectedModel?: GonkaGateModelCatalogEntry,
   remediation?: string,
   liveCatalog?: GonkaGateLiveCatalogSummary,
 ): InstallBlockedResult {
@@ -115,7 +115,7 @@ function createScaffoldResult(
   context: InstallContext,
   path: InstallPath,
   reason: string,
-  selectedModel?: CuratedModel,
+  selectedModel?: GonkaGateModelCatalogEntry,
   remediation?: string,
   liveCatalog?: GonkaGateLiveCatalogSummary,
 ): InstallScaffoldResult {
@@ -137,7 +137,7 @@ function createFailedResult(
   path: InstallPath,
   reason: string,
   writeResult: NativeWriteFailure,
-  selectedModel: CuratedModel,
+  selectedModel: GonkaGateModelCatalogEntry,
   liveCatalog: GonkaGateLiveCatalogSummary,
 ): InstallFailedResult {
   return {
@@ -157,7 +157,7 @@ function createFailedResult(
 function createSuccessResult(
   context: InstallContext,
   path: Exclude<InstallPath, "none">,
-  selectedModel: CuratedModel,
+  selectedModel: GonkaGateModelCatalogEntry,
   writeResult: NativeWriteSuccess,
   liveCatalog: GonkaGateLiveCatalogSummary,
 ): InstallSuccessResult {
@@ -216,28 +216,29 @@ async function loadInstallContext(
 async function resolveSelectedModel(
   context: InstallContext,
   options: InstallOptions,
-  catalog: CuratedGonkaGateModelCatalog,
-): Promise<CuratedModel> {
+  catalog: GonkaGateModelCatalog,
+): Promise<GonkaGateModelCatalogEntry> {
   if (options.model !== undefined) {
-    const selectedModel = resolveModelByKey(options.model);
-    requireModelInGonkaGateCatalog(selectedModel, catalog);
-    return selectedModel;
+    return requireModelInGonkaGateCatalog(options.model, catalog);
   }
 
   if (
     options.interactive === false ||
     !canPromptInteractively(context.installDependencies)
   ) {
-    throw new Error(
-      "No curated model was selected. Re-run in a terminal session or pass --model <curated-key>.",
-    );
+    const firstLiveModel = catalog.models[0];
+
+    if (firstLiveModel === undefined) {
+      throw new Error("GonkaGate did not return any selectable models.");
+    }
+
+    return firstLiveModel;
   }
 
-  const selectedModel = await promptForInstallModel(
+  return await promptForInstallModel(
     context.installDependencies,
+    catalog.models,
   );
-  requireModelInGonkaGateCatalog(selectedModel, catalog);
-  return selectedModel;
 }
 
 async function resolveCatalogCredentialAndSecretTransport(
@@ -282,26 +283,26 @@ async function resolveCatalogCredentialAndSecretTransport(
 async function loadLiveCatalog(
   context: InstallContext,
   apiKey: string,
-): Promise<CuratedGonkaGateModelCatalog> {
-  return await fetchCuratedGonkaGateModelCatalog(apiKey, {
+): Promise<GonkaGateModelCatalog> {
+  return await fetchGonkaGateModelCatalog(apiKey, {
     fetchImpl: context.installDependencies.http.fetch,
   });
 }
 
 function summarizeLiveCatalog(
-  catalog: CuratedGonkaGateModelCatalog,
+  catalog: GonkaGateModelCatalog,
 ): GonkaGateLiveCatalogSummary {
   return {
-    curatedModelIds: catalog.curatedModels.map((model) => model.modelId),
     endpoint: catalog.endpoint,
     liveModelCount: catalog.liveModelCount,
+    modelIds: catalog.models.map((model) => model.id),
   };
 }
 
 function getUnsupportedFirstRunTransportResult(
   context: InstallContext,
   path: Extract<InstallPath, "first_run">,
-  selectedModel: CuratedModel,
+  selectedModel: GonkaGateModelCatalogEntry,
   secretTransport: SecretTransportMode,
 ): InstallBlockedResult | undefined {
   const supportedTransport = context.firstRunProof.supportedTransport;
@@ -392,20 +393,7 @@ async function runMutatingInstallPath(
     );
   }
 
-  if (path === "first_run") {
-    const unsupportedTransportResult = getUnsupportedFirstRunTransportResult(
-      context,
-      path,
-      resolveModelByKey(options.model),
-      secretTransport.mode,
-    );
-
-    if (unsupportedTransportResult !== undefined) {
-      return unsupportedTransportResult;
-    }
-  }
-
-  let liveCatalog: CuratedGonkaGateModelCatalog;
+  let liveCatalog: GonkaGateModelCatalog;
 
   try {
     liveCatalog = await loadLiveCatalog(context, secretTransport.apiKey);
@@ -422,7 +410,7 @@ async function runMutatingInstallPath(
   }
 
   const liveCatalogSummary = summarizeLiveCatalog(liveCatalog);
-  let selectedModel: CuratedModel;
+  let selectedModel: GonkaGateModelCatalogEntry;
 
   try {
     selectedModel = await resolveSelectedModel(context, options, liveCatalog);
@@ -453,13 +441,13 @@ async function runMutatingInstallPath(
   const writeResult =
     path === "existing_config"
       ? await runExistingConfigMutation(context.installDependencies, {
-          modelId: selectedModel.modelId,
+          modelId: selectedModel.id,
           quiesceInspection,
           secret: secretTransport.secret,
           secretTransport: secretTransport.mode,
         })
       : await runFirstRunInstall(context.installDependencies, {
-          modelId: selectedModel.modelId,
+          modelId: selectedModel.id,
           secret: secretTransport.secret,
           secretTransport: secretTransport.mode,
         });
@@ -488,10 +476,6 @@ export async function runInstallUseCase(
   options: InstallOptions = {},
   dependencies?: InstallDependencies,
 ): Promise<InstallResult> {
-  if (options.model !== undefined) {
-    resolveModelByKey(options.model);
-  }
-
   const context = await loadInstallContext(options, dependencies);
   const pathSelection = chooseInstallPath(context);
 

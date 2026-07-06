@@ -1,5 +1,4 @@
 import { ZEROCLAW_PROVIDER_KEY } from "../constants/gateway.js";
-import { resolveModelById } from "../constants/models.js";
 import type {
   ConfigMutationPreflight,
   SavedConfigInspection,
@@ -127,7 +126,8 @@ function evaluateSavedContract(
     preflight.outcome === "eligible_first_run";
 
   const providerOk = normalizedProvider === ZEROCLAW_PROVIDER_KEY;
-  const modelOk = resolveModelById(normalizedModel) !== undefined;
+  const modelOk =
+    typeof normalizedModel === "string" && normalizedModel.trim().length > 0;
   const apiKeyOk = apiKeyState === "set";
 
   const checks = Object.freeze([
@@ -156,8 +156,8 @@ function evaluateSavedContract(
       "default_model",
       modelOk,
       modelOk
-        ? `Saved model is curated: ${normalizedModel}.`
-        : `Saved model must be one of the curated GonkaGate entries; received ${normalizedModel ?? "<unset>"}.`,
+        ? `Saved model is set: ${normalizedModel}.`
+        : `Saved model must be set from a GonkaGate /v1/models response; received ${normalizedModel ?? "<unset>"}.`,
     ),
     createSavedContractCheck(
       "api_key",

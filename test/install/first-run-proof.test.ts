@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { resolveModelByKey } from "../../src/constants/models.js";
 import { ZEROCLAW_PROVIDER_KEY } from "../../src/constants/gateway.js";
 import {
   evaluateFirstRunCandidate,
   getShippedFirstRunProof,
 } from "../../src/install/first-run-proof.js";
 import { runInstallUseCase } from "../../src/install/install-use-case.js";
-import { createInstallHarness } from "./harness.js";
+import { createInstallHarness, TEST_LIVE_MODEL_ID } from "./harness.js";
 
-const CURATED_MODEL = resolveModelByKey("qwen3-235b");
+const SELECTED_MODEL_ID = TEST_LIVE_MODEL_ID;
 
 test("shipped first-run proof binds runtime install to the native prompt transport", () => {
   const proof = getShippedFirstRunProof();
@@ -20,7 +19,7 @@ test("shipped first-run proof binds runtime install to the native prompt transpo
   assert.match(proof.reason, /onboard --quick/i);
   assert.equal(
     proof.commandTuple?.join(" -> "),
-    "zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <curated-model-id> -> zeroclaw props set api-key",
+    "zeroclaw onboard --quick --provider custom:https://api.gonkagate.com/v1 --model <model-id> -> zeroclaw props set api-key",
   );
 });
 
@@ -39,7 +38,7 @@ test("evaluateFirstRunCandidate proves the onboard-quick plus native api-key pat
     const report = await evaluateFirstRunCandidate(
       harness.createDependencies(),
       {
-        modelId: CURATED_MODEL.modelId,
+        modelId: SELECTED_MODEL_ID,
         transport: "native_prompt",
       },
     );
@@ -57,7 +56,7 @@ test("evaluateFirstRunCandidate proves the onboard-quick plus native api-key pat
           "--provider",
           ZEROCLAW_PROVIDER_KEY,
           "--model",
-          CURATED_MODEL.modelId,
+          SELECTED_MODEL_ID,
         ],
         ["props", "set", "api-key"],
       ],
@@ -100,7 +99,7 @@ test("install uses the proven first-run path and still keeps the api key off arg
           },
           async selectOption<TValue extends string>() {
             promptCalls += 1;
-            return "qwen3-235b" as TValue;
+            return SELECTED_MODEL_ID as TValue;
           },
         },
       }),
@@ -108,7 +107,7 @@ test("install uses the proven first-run path and still keeps the api key off arg
 
     assert.equal(result.status, "success");
     assert.equal(result.path, "first_run");
-    assert.equal(result.selectedModel?.key, "qwen3-235b");
+    assert.equal(result.selectedModel?.id, SELECTED_MODEL_ID);
     assert.equal(promptCalls, 1);
     assert.equal(secretPromptCalls, 1);
     assert.equal(result.configInspection?.status, "inspected");
@@ -134,7 +133,7 @@ test("install uses the proven first-run path and still keeps the api key off arg
           "--provider",
           ZEROCLAW_PROVIDER_KEY,
           "--model",
-          resolveModelByKey("qwen3-235b").modelId,
+          SELECTED_MODEL_ID,
         ],
         ["props", "set", "api-key"],
       ],
@@ -172,7 +171,7 @@ test("first-run install blocks stdin api-key transport before any mutation comma
     const result = await runInstallUseCase(
       {
         apiKey: "gp-stdin-secret",
-        model: CURATED_MODEL.key,
+        model: SELECTED_MODEL_ID,
       },
       harness.createDependencies(),
     );
@@ -214,7 +213,7 @@ test("first-run proof reports a failing tuple when the hidden api-key step fails
     const report = await evaluateFirstRunCandidate(
       harness.createDependencies(),
       {
-        modelId: CURATED_MODEL.modelId,
+        modelId: SELECTED_MODEL_ID,
         transport: "native_prompt",
       },
     );
